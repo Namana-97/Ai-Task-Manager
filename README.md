@@ -46,7 +46,7 @@ When a user asks a question, the system converts it into an embedding and retrie
 
 ```bash
 # clone repo
-git clone <your-repo-link>
+git clone 
 
 # install dependencies
 npm install
