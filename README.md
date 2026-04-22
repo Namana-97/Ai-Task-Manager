@@ -2,12 +2,12 @@
 RAG-based task management system with an AI chat interface for querying and managing tasks using natural language.
 
 # Features
-Chat with your tasks using natural language
-Retrieves relevant tasks using embeddings (RAG)
-Shows answers with task references (sources)
-Supports follow-up questions
-Create/update tasks via chat (intent detection)
-Auto-suggest category and priority for tasks
+i. Chat with your tasks using natural language
+ii. Retrieves relevant tasks using embeddings (RAG)
+iii.Shows answers with task references (sources)
+iv.Supports follow-up questions
+v.Create/update tasks via chat (intent detection)
+vi.Auto-suggest category and priority for tasks
 
 # Tech Stack
 Frontend: Angular
