@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { FunctionDeclaration, GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { OutputValidator } from '@ai-task-manager/ai/guardrails';
@@ -27,7 +28,10 @@ const intentSchema = z.object({
 
 @Injectable()
 export class AnthropicIntentClassifier {
-  private readonly model = 'claude-sonnet-4-20250514';
+  private readonly provider = process.env.LLM_PROVIDER ?? 'gemini';
+  private readonly model = this.resolveModel(
+    process.env.LLM_MODEL ?? (this.provider === 'gemini' ? 'gemini-2.5-flash' : 'claude-sonnet-4-20250514')
+  );
   private readonly anthropic = process.env.LLM_API_KEY
     ? new Anthropic({ apiKey: process.env.LLM_API_KEY })
     : null;
@@ -40,8 +44,12 @@ export class AnthropicIntentClassifier {
   ) {}
 
   async classify(message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<ClassifiedIntent> {
+    if (this.provider === 'gemini') {
+      return this.classifyWithGemini(message, conversationHistory);
+    }
+
     if (!this.anthropic) {
-      return this.heuristicClassify(message);
+      return this.heuristicFallback(message);
     }
 
     const systemPrompt = this.promptLoader.load('intent-classifier.txt');
@@ -130,7 +138,124 @@ export class AnthropicIntentClassifier {
     });
   }
 
-  private heuristicClassify(message: string): ClassifiedIntent {
+  private async classifyWithGemini(
+    message: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }>
+  ): Promise<ClassifiedIntent> {
+    const apiKey = process.env.LLM_API_KEY ?? '';
+    if (!apiKey) {
+      return this.heuristicFallback(message);
+    }
+
+    const systemPrompt = `${this.promptLoader.load('intent-classifier.txt')}
+
+Use the provided tools when the user wants to create, update, delete, or report on tasks.
+For questions about tasks, do not call a tool and classify the request as a query.
+Consider conversation history when resolving references like "that task" or "the login bug".`;
+
+    const tools: FunctionDeclaration[] = [
+      {
+        name: 'create_task',
+        description: 'Create a new task when the user asks to add, create, or set up a task.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            title: { type: SchemaType.STRING, description: 'Short task title' },
+            description: { type: SchemaType.STRING, description: 'Task description' },
+            category: { type: SchemaType.STRING, description: 'Category such as Work or Engineering' },
+            priority: {
+              type: SchemaType.STRING,
+              enum: ['Critical', 'High', 'Medium', 'Low']
+            },
+            assignee: { type: SchemaType.STRING, description: 'Name or user ID' },
+            dueDate: { type: SchemaType.STRING, description: 'ISO 8601 date' },
+            tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+          },
+          required: ['title']
+        }
+      },
+      {
+        name: 'update_task',
+        description: 'Update an existing task when the user asks to change, modify, or edit it.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            taskId: { type: SchemaType.STRING, description: 'The task ID to update' },
+            fields: { type: SchemaType.OBJECT, description: 'Fields to update' }
+          },
+          required: ['taskId', 'fields']
+        }
+      },
+      {
+        name: 'delete_task',
+        description: 'Delete a task only when the user explicitly wants to delete it.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            taskId: { type: SchemaType.STRING, description: 'The task ID to delete' }
+          },
+          required: ['taskId']
+        }
+      },
+      {
+        name: 'status_report',
+        description: 'Generate a standup or status report when the user asks for a report.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            scope: { type: SchemaType.STRING, description: 'The report scope' },
+            timeRange: { type: SchemaType.STRING, description: 'The report time range' }
+          },
+          required: ['scope', 'timeRange']
+        }
+      }
+    ];
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: this.model,
+      tools: [{ functionDeclarations: tools }],
+      systemInstruction: systemPrompt
+    });
+
+    const chat = model.startChat({
+      history: history.map((entry) => ({
+        role: entry.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: entry.content }]
+      }))
+    });
+    const result = await chat.sendMessage(message);
+    const response = result.response as {
+      candidates?: Array<{
+        content?: {
+          parts?: Array<{ functionCall?: { name?: string; args?: Record<string, unknown> } }>;
+        };
+      }>;
+    };
+
+    const functionCall = response.candidates?.[0]?.content?.parts?.find((part) => part.functionCall)?.functionCall;
+    if (!functionCall?.name) {
+      return {
+        type: 'query',
+        confidence: 0.9,
+        requiresConfirmation: false
+      };
+    }
+
+    const toolName = functionCall.name;
+    const parameters = this.extractParameters(toolName, functionCall.args ?? {});
+    return this.outputValidator.validate(intentSchema, {
+      type: toolName,
+      confidence: 0.92,
+      parameters,
+      requiresConfirmation:
+        toolName === 'delete_task' ||
+        (toolName === 'update_task' &&
+          (Boolean(parameters?.assignee) || Boolean(parameters?.status)))
+    });
+  }
+
+  private heuristicFallback(message: string): ClassifiedIntent {
     const normalized = message.toLowerCase();
     if (normalized.includes('delete')) {
       return {
@@ -182,5 +307,15 @@ export class AnthropicIntentClassifier {
 
   private extractTaskId(message: string): string | undefined {
     return message.match(/task[-\s]?(\d+)/i)?.[0]?.replace(/\s+/g, '-').toLowerCase();
+  }
+
+  private resolveModel(model: string): string {
+    if (
+      this.provider === 'gemini' &&
+      ['gemini-1.5-flash', 'gemini-1.5-flash-latest'].includes(model)
+    ) {
+      return 'gemini-2.5-flash';
+    }
+    return model;
   }
 }

@@ -7,7 +7,7 @@ describe('VectorStoreClient RBAC filters', () => {
     expect(
       client.buildPgFilter({ orgId: 'org-1', userId: 'user-1', role: 'viewer' })
     ).toEqual({
-      clause: 'org_id = $2 AND assignee_id = $3',
+      clause: 'org_id = $2::text AND assignee_id = $3::text',
       params: ['org-1', 'user-1']
     });
   });

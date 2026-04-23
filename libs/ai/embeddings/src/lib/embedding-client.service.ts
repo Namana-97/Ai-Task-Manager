@@ -2,20 +2,21 @@ import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { performance } from 'node:perf_hooks';
 
-const DEFAULT_MODEL = 'text-embedding-3-small';
-const DEFAULT_DIMENSIONS = 1536;
+const DEFAULT_MODEL = 'Xenova/all-MiniLM-L6-v2';
+const DEFAULT_DIMENSIONS = 384;
 const BATCH_SIZE = 100;
 const MAX_RETRIES = 5;
 
 @Injectable()
 export class EmbeddingClient {
   private readonly logger = new Logger(EmbeddingClient.name);
-  private readonly provider = process.env.EMBEDDING_PROVIDER ?? 'openai';
+  private readonly provider = process.env.EMBEDDING_PROVIDER ?? 'local';
   private readonly model = process.env.EMBEDDING_MODEL ?? DEFAULT_MODEL;
   private readonly dimensions = Number(process.env.EMBEDDING_DIMENSIONS ?? DEFAULT_DIMENSIONS);
   private readonly openaiClient = process.env.EMBEDDING_API_KEY
     ? new OpenAI({ apiKey: process.env.EMBEDDING_API_KEY })
     : null;
+  private localPipeline: any = null;
 
   async embed(texts: string[]): Promise<number[][]> {
     const batches: string[][] = [];
@@ -28,7 +29,7 @@ export class EmbeddingClient {
       const start = performance.now();
       const batchEmbeddings =
         this.provider === 'local'
-          ? await this.embedLocally(batch)
+          ? await this.embedLocal(batch)
           : await this.embedWithRetry(batch);
       const latencyMs = Math.round(performance.now() - start);
       this.logger.log(`Embedded batch of ${batch.length} texts in ${latencyMs}ms`);
@@ -41,8 +42,8 @@ export class EmbeddingClient {
   private async embedWithRetry(batch: string[], attempt = 0): Promise<number[][]> {
     try {
       if (!this.openaiClient) {
-        this.logger.warn('EMBEDDING_API_KEY missing, falling back to deterministic local embeddings');
-        return this.embedLocally(batch);
+        this.logger.warn('EMBEDDING_API_KEY missing, falling back to local MiniLM embeddings');
+        return this.embedLocal(batch);
       }
 
       const response = await this.openaiClient.embeddings.create({
@@ -68,7 +69,34 @@ export class EmbeddingClient {
     }
   }
 
-  private async embedLocally(batch: string[]): Promise<number[][]> {
+  private async embedLocal(batch: string[]): Promise<number[][]> {
+    try {
+      const { pipeline } = await import('@xenova/transformers');
+
+      if (!this.localPipeline) {
+        this.logger.log(`Loading local embedding model (${this.model})...`);
+        this.localPipeline = await pipeline('feature-extraction', this.model);
+        this.logger.log('Local model loaded.');
+      }
+
+      const results: number[][] = [];
+      const localPipeline = this.localPipeline;
+      for (const text of batch) {
+        const output = await localPipeline(text, { pooling: 'mean', normalize: true });
+        results.push(Array.from(output.data).slice(0, this.dimensions) as number[]);
+      }
+      return results;
+    } catch (error) {
+      this.logger.warn(
+        `Local transformer model unavailable, falling back to deterministic embeddings: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`
+      );
+      return this.embedDeterministic(batch);
+    }
+  }
+
+  private embedDeterministic(batch: string[]): number[][] {
     return batch.map((text) => {
       const vector = new Array<number>(this.dimensions).fill(0);
       for (let index = 0; index < text.length; index += 1) {
