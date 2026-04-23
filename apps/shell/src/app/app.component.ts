@@ -1,24 +1,29 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  signal
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import DOMPurify from 'dompurify';
-import { marked } from 'marked';
-import { ChatPanelComponent, SourceReference } from '@task-ai/ui-chat';
+import { ChatPanelComponent } from '@task-ai/ui-chat';
 
 interface Insight {
   type: string;
   severity: 'info' | 'warning' | 'critical';
   message: string;
   taskIds: string[];
+  metric?: { label: string; current: number; baseline: number; unit: string };
 }
 
-interface ActiveTaskRow {
+interface Task {
   id: string;
   title: string;
-  status: 'In Progress' | 'Done' | 'Blocked' | 'Open';
+  status: string;
   category: string;
-  assignee: { name: string };
+  assignee?: { name: string };
+  priority?: string;
 }
 
 @Component({
@@ -26,44 +31,77 @@ interface ActiveTaskRow {
   standalone: true,
   imports: [CommonModule, ChatPanelComponent],
   template: `
-    <div class="app-shell">
+    <div class="shell" [class.loaded]="loaded()">
+      <div class="scanline"></div>
+
       <aside class="sidebar">
-        <div class="sidebar-logo">
-          <span class="logo-mark">T</span>
-          <span class="logo-text">TaskAI</span>
+        <div class="sidebar-top">
+          <div class="logo">
+            <div class="logo-mark">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="1" y="1" width="7" height="7" stroke="currentColor" stroke-width="1.2"/>
+                <rect x="10" y="1" width="7" height="7" stroke="currentColor" stroke-width="1.2"/>
+                <rect x="1" y="10" width="7" height="7" stroke="currentColor" stroke-width="1.2"/>
+                <rect x="10" y="10" width="7" height="7" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <span class="logo-name">TASK<span class="logo-ai">AI</span></span>
+              <span class="logo-version">v2.1.0</span>
+            </div>
+          </div>
+
+          <div class="sidebar-divider"></div>
+
+          <nav class="nav">
+            <button class="nav-item" [class.active]="activeView() === 'dashboard'" (click)="setView('dashboard')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="0.5" y="0.5" width="5" height="5" stroke="currentColor"/>
+                  <rect x="8.5" y="0.5" width="5" height="5" stroke="currentColor"/>
+                  <rect x="0.5" y="8.5" width="5" height="5" stroke="currentColor"/>
+                  <rect x="8.5" y="8.5" width="5" height="5" fill="currentColor" stroke="currentColor"/>
+                </svg>
+              </span>
+              <span class="nav-label">DASHBOARD</span>
+              <span class="nav-indicator" *ngIf="activeView() === 'dashboard'"></span>
+            </button>
+
+            <button class="nav-item" [class.active]="activeView() === 'tasks'" (click)="setView('tasks')">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="0.5" y="0.5" width="13" height="13" stroke="currentColor"/>
+                  <path d="M3 7l2.5 2.5L11 4" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
+              </span>
+              <span class="nav-label">TASKS</span>
+            </button>
+
+            <button class="nav-item" [class.active]="activeView() === 'insights'" (click)="setView('insights'); loadInsights()">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 13V8M5 13V5M9 13V2M13 13V6" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
+              </span>
+              <span class="nav-label">INSIGHTS</span>
+              <span class="nav-badge" *ngIf="insights().length > 0">{{ insights().length }}</span>
+            </button>
+
+            <button class="nav-item" [class.active]="activeView() === 'standup'" (click)="setView('standup'); loadStandup()">
+              <span class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="0.5" y="2.5" width="13" height="11" stroke="currentColor"/>
+                  <path d="M0.5 5.5h13M4.5 0.5v4M9.5 0.5v4" stroke="currentColor"/>
+                </svg>
+              </span>
+              <span class="nav-label">STANDUP</span>
+            </button>
+          </nav>
         </div>
 
-        <nav class="sidebar-nav">
-          <button class="nav-item active">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-            Dashboard
-          </button>
-          <button class="nav-item" (click)="loadTaskSnapshot()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-            </svg>
-            Tasks
-          </button>
-          <button class="nav-item" (click)="loadInsights()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path d="M2 20h20M6 20V10l6-6 6 6v10"/>
-            </svg>
-            Insights
-          </button>
-          <button class="nav-item" (click)="loadStandup()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            </svg>
-            Standup
-          </button>
-        </nav>
-
-        <div class="sidebar-footer">
-          <div class="role-switcher">
-            <span class="role-label">Dev role</span>
+        <div class="sidebar-bottom">
+          <div class="role-block">
+            <span class="block-label">DEV ROLE</span>
             <div class="role-pills">
               <button
                 *ngFor="let r of roles"
@@ -74,125 +112,149 @@ interface ActiveTaskRow {
               </button>
             </div>
           </div>
-          <div class="user-row">
-            <div class="avatar">{{ currentRole().charAt(0).toUpperCase() }}</div>
+
+          <div class="sidebar-divider"></div>
+
+          <div class="user-block">
+            <div class="user-avatar">{{ currentRole().charAt(0).toUpperCase() }}</div>
             <div class="user-info">
               <span class="user-name">{{ roleUsers[currentRole()].name }}</span>
-              <span class="user-role">{{ currentRole() }}</span>
+              <span class="user-role">{{ currentRole() | uppercase }}</span>
             </div>
-            <div class="online-dot"></div>
+            <div class="connection-dot" [class.online]="backendOnline()"></div>
           </div>
         </div>
       </aside>
 
-      <main class="main-content">
-        <header class="page-header">
+      <main class="main">
+        <header class="header">
           <div class="header-left">
-            <h1 class="page-title">Dashboard</h1>
-            <span class="page-subtitle">{{ today }}</span>
+            <div class="breadcrumb">
+              <span class="breadcrumb-root">TASKAI</span>
+              <span class="breadcrumb-sep">/</span>
+              <span class="breadcrumb-current">{{ activeView() | uppercase }}</span>
+            </div>
+            <div class="header-date">{{ today }}</div>
           </div>
           <div class="header-right">
-            <div class="status-pill" [class.live]="backendOnline()">
-              <span class="status-dot"></span>
-              {{ backendOnline() ? 'Backend connected' : 'Connecting...' }}
+            <div class="status-chip" [class.online]="backendOnline()">
+              <span class="chip-dot"></span>
+              <span class="chip-text">{{ backendOnline() ? 'CONNECTED' : 'OFFLINE' }}</span>
             </div>
+            <div class="header-time">{{ currentTime() }}</div>
           </div>
         </header>
 
-        <section class="hero">
-          <div class="hero-copy">
-            <span class="eyebrow">AI Operations Console</span>
-            <h2>One surface for task health, live retrieval, and AI-assisted execution.</h2>
-            <p>
-              This shell is wired to the real backend through an Nx Angular dev server proxy, with
-              role-aware chat and live standup and insight pulls.
-            </p>
-          </div>
-          <div class="hero-accent">
-            <div class="hero-kicker">Current focus</div>
-            <strong>{{ heroFocus() }}</strong>
-            <span>Switch roles to verify RBAC behavior instantly.</span>
-          </div>
-        </section>
-
-        <div class="metrics-row" *ngIf="metrics()">
-          <div class="metric-card">
-            <span class="metric-value">{{ metrics()!.total }}</span>
-            <span class="metric-label">Total surfaced</span>
-          </div>
-          <div class="metric-card accent">
-            <span class="metric-value">{{ metrics()!.inProgress }}</span>
-            <span class="metric-label">In progress</span>
-          </div>
-          <div class="metric-card">
-            <span class="metric-value">{{ metrics()!.completed }}</span>
-            <span class="metric-label">Completed</span>
-          </div>
-          <div class="metric-card warn">
-            <span class="metric-value">{{ metrics()!.overdue }}</span>
-            <span class="metric-label">Overdue</span>
+        <div class="metrics-bar" *ngIf="activeView() === 'dashboard'">
+          <div class="metric" *ngFor="let m of metricsList(); let i = index" [style.animation-delay]="(i * 80) + 'ms'">
+            <span class="metric-num">{{ m.value }}</span>
+            <span class="metric-label">{{ m.label }}</span>
+            <div class="metric-bar-fill" [style.width]="m.pct + '%'"></div>
           </div>
         </div>
 
-        <div class="content-grid">
-          <section class="insights-panel" *ngIf="insights().length > 0">
-            <h2 class="section-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              Live insights
-            </h2>
-            <div class="insight-list">
-              <div class="insight-item" *ngFor="let ins of insights()" [attr.data-severity]="ins.severity">
-                <div class="insight-dot"></div>
-                <div class="insight-copy">
-                  <p class="insight-text">{{ ins.message }}</p>
-                  <div class="insight-tasks">
-                    <span class="task-chip" *ngFor="let id of ins.taskIds.slice(0, 3)">{{ id }}</span>
+        <div class="content">
+          <ng-container *ngIf="activeView() === 'dashboard'">
+            <div class="dashboard-grid">
+              <section class="panel task-panel">
+                <div class="panel-header">
+                  <span class="panel-title">ACTIVE TASKS</span>
+                  <span class="panel-count">{{ tasks().length }}</span>
+                </div>
+                <div class="task-feed">
+                  <div class="task-row" *ngFor="let t of tasks(); let i = index" [style.animation-delay]="(i * 40) + 'ms'">
+                    <div class="task-left">
+                      <div class="task-status-bar" [attr.data-status]="t.status"></div>
+                      <div class="task-info">
+                        <span class="task-title">{{ t.title }}</span>
+                        <span class="task-sub">{{ t.category }} · {{ t.assignee?.name ?? '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="task-right">
+                      <span class="task-id">{{ t.id }}</span>
+                      <span class="task-status-tag" [attr.data-status]="t.status">{{ t.status }}</span>
+                    </div>
+                  </div>
+                  <div class="task-empty" *ngIf="tasks().length === 0">
+                    <span>LOADING TASK FEED...</span>
                   </div>
                 </div>
-              </div>
-            </div>
-          </section>
+              </section>
 
-          <section class="standup-panel" *ngIf="standup()">
-            <h2 class="section-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
-              Today's standup
-            </h2>
-            <div class="standup-body" [innerHTML]="standup()"></div>
-          </section>
-
-          <section class="tasks-panel">
-            <div class="tasks-header">
-              <h2 class="section-title">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                  <polyline points="9 11 12 14 22 4"/>
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-                </svg>
-                Active tasks
-              </h2>
-              <button class="refresh-button" type="button" (click)="loadTaskSnapshot()">Refresh</button>
-            </div>
-            <div class="task-list" *ngIf="tasks().length > 0; else noTasks">
-              <div class="task-row" *ngFor="let t of tasks()">
-                <div class="task-status-dot" [attr.data-status]="t.status"></div>
-                <div class="task-body">
-                  <span class="task-title">{{ t.title }}</span>
-                  <span class="task-meta">{{ t.category }} · {{ t.assignee.name }}</span>
+              <section class="panel insights-preview-panel">
+                <div class="panel-header">
+                  <span class="panel-title">SIGNAL FEED</span>
+                  <button class="panel-action" (click)="setView('insights'); loadInsights()">VIEW ALL →</button>
                 </div>
-                <span class="task-badge" [attr.data-status]="t.status">{{ t.status }}</span>
+                <div class="signal-list">
+                  <div class="signal-row" *ngFor="let ins of insights().slice(0,4)" [attr.data-severity]="ins.severity">
+                    <div class="signal-bar"></div>
+                    <p class="signal-msg">{{ ins.message }}</p>
+                  </div>
+                  <div class="signal-empty" *ngIf="insights().length === 0">
+                    <span>NO ANOMALIES DETECTED</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="activeView() === 'insights'">
+            <div class="view-header">
+              <h1 class="view-title">INTELLIGENCE FEED</h1>
+              <button class="refresh-btn" (click)="loadInsights()">REFRESH</button>
+            </div>
+            <div class="insights-grid">
+              <div class="insight-card" *ngFor="let ins of insights(); let i = index" [attr.data-severity]="ins.severity" [style.animation-delay]="(i * 60) + 'ms'">
+                <div class="insight-card-top">
+                  <span class="insight-type">{{ ins.type | uppercase }}</span>
+                  <span class="insight-sev">{{ ins.severity | uppercase }}</span>
+                </div>
+                <p class="insight-msg">{{ ins.message }}</p>
+                <div class="insight-tasks" *ngIf="ins.taskIds?.length">
+                  <span class="task-ref" *ngFor="let id of ins.taskIds.slice(0,3)">{{ id }}</span>
+                </div>
+                <div class="insight-metric" *ngIf="ins.metric">
+                  <span class="metric-current">{{ ins.metric.current }}</span>
+                  <span class="metric-sep">/</span>
+                  <span class="metric-baseline">{{ ins.metric.baseline }} {{ ins.metric.unit }}</span>
+                </div>
               </div>
             </div>
-            <ng-template #noTasks>
-              <div class="empty-state">
-                <p>Loading task snapshot from the backend...</p>
+          </ng-container>
+
+          <ng-container *ngIf="activeView() === 'standup'">
+            <div class="view-header">
+              <h1 class="view-title">DAILY STANDUP</h1>
+              <button class="refresh-btn" (click)="loadStandup()">GENERATE</button>
+            </div>
+            <div class="standup-card" *ngIf="standup(); else noStandup">
+              <div class="standup-content" [innerHTML]="standup()"></div>
+            </div>
+            <ng-template #noStandup>
+              <div class="empty-view">
+                <span class="empty-label">CLICK GENERATE TO PULL TODAY'S STANDUP</span>
               </div>
             </ng-template>
-          </section>
+          </ng-container>
+
+          <ng-container *ngIf="activeView() === 'tasks'">
+            <div class="view-header">
+              <h1 class="view-title">TASK REGISTRY</h1>
+            </div>
+            <div class="task-table">
+              <div class="table-head">
+                <span>ID</span><span>TITLE</span><span>CATEGORY</span><span>ASSIGNEE</span><span>STATUS</span>
+              </div>
+              <div class="table-row" *ngFor="let t of tasks(); let i = index" [style.animation-delay]="(i * 30) + 'ms'">
+                <span class="col-id">{{ t.id }}</span>
+                <span class="col-title">{{ t.title }}</span>
+                <span class="col-cat">{{ t.category }}</span>
+                <span class="col-assignee">{{ t.assignee?.name ?? '—' }}</span>
+                <span class="col-status" [attr.data-status]="t.status">{{ t.status }}</span>
+              </div>
+            </div>
+          </ng-container>
         </div>
       </main>
     </div>
@@ -201,637 +263,877 @@ interface ActiveTaskRow {
   `,
   styles: [
     `
-      .app-shell {
+      .shell {
         display: flex;
         height: 100vh;
         overflow: hidden;
-        background:
-          radial-gradient(circle at top left, rgba(0, 229, 255, 0.08), transparent 24%),
-          radial-gradient(circle at bottom right, rgba(0, 229, 255, 0.05), transparent 24%),
-          var(--bg-base);
+        background: var(--bg-void);
+        opacity: 0;
+        transition: opacity var(--duration-slow) var(--ease-sharp);
+      }
+
+      .shell.loaded { opacity: 1; }
+
+      .scanline {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--amber), transparent);
+        opacity: 0.15;
+        animation: scanline 8s linear infinite;
+        pointer-events: none;
+        z-index: 100;
       }
 
       .sidebar {
-        width: 236px;
+        width: 200px;
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
-        background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent 18%), var(--bg-surface);
+        justify-content: space-between;
+        background: var(--bg-base);
         border-right: 1px solid var(--border);
-        padding: 22px 0;
+        padding: 0;
+        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
       }
 
-      .sidebar-logo {
+      .sidebar-top {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-bottom {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .logo {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 0 20px 24px;
+        padding: 20px 16px;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 16px;
       }
 
       .logo-mark {
-        width: 30px;
-        height: 30px;
-        background: linear-gradient(135deg, var(--accent), #7ff7ff);
-        color: #000;
-        font-weight: 700;
-        font-size: 14px;
+        color: var(--amber);
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--radius-sm);
-        box-shadow: 0 0 18px var(--accent-glow);
+        transition: filter var(--duration-mid) var(--ease-sharp);
       }
 
-      .logo-text {
-        font-weight: 500;
-        font-size: 15px;
-        letter-spacing: -0.02em;
+      .logo:hover .logo-mark {
+        filter: drop-shadow(0 0 6px var(--amber-glow));
+      }
+
+      .logo-name {
+        font-family: var(--font-display);
+        font-size: 18px;
+        letter-spacing: 0.05em;
         color: var(--text-primary);
+        display: block;
+        line-height: 1;
       }
 
-      .sidebar-nav {
-        flex: 1;
+      .logo-ai { color: var(--amber); }
+
+      .logo-version {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+      }
+
+      .sidebar-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0;
+      }
+
+      .nav {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-        padding: 0 10px;
+        padding: 12px 8px;
+        gap: 2px;
       }
 
       .nav-item {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px 12px;
-        border-radius: var(--radius-md);
+        padding: 9px 8px;
         border: none;
         background: transparent;
-        color: var(--text-secondary);
-        font-size: 13px;
-        font-family: var(--font-ui);
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0.1em;
         cursor: pointer;
         text-align: left;
-        transition: all 150ms ease;
         width: 100%;
+        border-radius: var(--radius-sm);
+        transition: all var(--duration-fast) var(--ease-sharp);
       }
 
       .nav-item:hover {
-        background: var(--bg-hover);
         color: var(--text-primary);
+        background: var(--bg-hover);
       }
 
       .nav-item.active {
-        background: var(--accent-dim);
-        color: var(--accent);
+        color: var(--amber);
+        background: var(--amber-dim);
       }
 
-      .sidebar-footer {
-        padding: 16px 16px 0;
-        border-top: 1px solid var(--border);
-        margin-top: 16px;
+      .nav-icon {
+        flex-shrink: 0;
+        display: flex;
+      }
+
+      .nav-label { flex: 1; }
+
+      .nav-indicator {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--amber);
+        box-shadow: 0 0 6px var(--amber);
+        animation: amberPulse 2s infinite;
+      }
+
+      .nav-badge {
+        font-size: 9px;
+        background: var(--amber);
+        color: #000;
+        padding: 1px 5px;
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+      }
+
+      .role-block {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 6px;
       }
 
-      .role-switcher {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .role-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+      .block-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.12em;
         color: var(--text-muted);
       }
 
       .role-pills {
         display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
+        gap: 4px;
       }
 
       .role-pill {
-        font-size: 10px;
-        padding: 4px 8px;
-        border-radius: 20px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        padding: 3px 7px;
         border: 1px solid var(--border);
         background: transparent;
         color: var(--text-secondary);
         cursor: pointer;
-        font-family: var(--font-ui);
-        transition: all 150ms ease;
+        border-radius: var(--radius-sm);
+        transition: all var(--duration-fast) var(--ease-sharp);
       }
 
       .role-pill:hover {
-        border-color: var(--border-hover);
+        border-color: var(--border-strong);
         color: var(--text-primary);
       }
 
       .role-pill.active {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-dim);
+        border-color: var(--amber);
+        color: var(--amber);
+        background: var(--amber-dim);
       }
 
-      .user-row {
+      .user-block {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px 0 0;
+        gap: 8px;
       }
 
-      .avatar {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background: var(--accent-dim);
-        border: 1px solid var(--accent);
-        color: var(--accent);
-        font-size: 11px;
-        font-weight: 500;
+      .user-avatar {
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--amber-border);
+        color: var(--amber);
+        font-family: var(--font-display);
+        font-size: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+        transition: box-shadow var(--duration-mid) var(--ease-sharp);
       }
 
-      .user-info {
-        flex: 1;
+      .user-avatar:hover {
+        box-shadow: 0 0 8px var(--amber-glow);
       }
 
       .user-name {
         display: block;
-        font-size: 12px;
-        font-weight: 500;
+        font-size: 11px;
+        font-weight: 400;
+        color: var(--text-primary);
+        font-family: var(--font-body);
       }
 
       .user-role {
-        font-size: 10px;
+        font-family: var(--font-mono);
+        font-size: 9px;
         color: var(--text-muted);
-        text-transform: capitalize;
+        letter-spacing: 0.08em;
       }
 
-      .online-dot {
-        width: 7px;
-        height: 7px;
+      .connection-dot {
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
+        background: var(--text-muted);
+        margin-left: auto;
+        flex-shrink: 0;
+        transition: all var(--duration-mid) ease;
+      }
+
+      .connection-dot.online {
         background: var(--success);
         box-shadow: 0 0 6px var(--success);
+        animation: amberPulse 3s infinite;
       }
 
-      .main-content {
+      .main {
         flex: 1;
-        overflow-y: auto;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
+        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) 80ms both;
       }
 
-      .page-header {
+      .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 24px 32px 20px;
+        padding: 14px 28px;
         border-bottom: 1px solid var(--border);
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: rgba(10, 14, 20, 0.88);
-        backdrop-filter: blur(10px);
+        background: var(--bg-base);
+        flex-shrink: 0;
       }
 
-      .page-title {
-        font-size: 22px;
-        font-weight: 600;
-        letter-spacing: -0.03em;
+      .breadcrumb {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
       }
 
-      .page-subtitle {
-        font-size: 12px;
+      .breadcrumb-sep { margin: 0 6px; }
+
+      .breadcrumb-current { color: var(--amber); }
+
+      .header-date {
+        font-size: 10px;
         color: var(--text-muted);
         margin-top: 2px;
-        display: block;
+        font-family: var(--font-mono);
       }
 
-      .status-pill {
+      .header-right {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        color: var(--text-muted);
-        padding: 6px 12px;
-        border-radius: 20px;
+      }
+
+      .status-chip {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        padding: 4px 10px;
         border: 1px solid var(--border);
+        color: var(--text-muted);
       }
 
-      .status-pill.live {
+      .status-chip.online {
+        border-color: rgba(76, 175, 121, 0.3);
         color: var(--success);
-        border-color: rgba(63, 185, 80, 0.3);
       }
 
-      .status-dot {
-        width: 6px;
-        height: 6px;
+      .chip-dot {
+        width: 4px;
+        height: 4px;
         border-radius: 50%;
         background: currentColor;
       }
 
-      .hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
-        gap: 16px;
-        padding: 24px 32px 0;
-      }
+      .status-chip.online .chip-dot { animation: amberPulse 2s infinite; }
 
-      .hero-copy,
-      .hero-accent,
-      .insights-panel,
-      .standup-panel,
-      .tasks-panel,
-      .metric-card {
-        background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)), var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-xl);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-      }
-
-      .hero-copy {
-        padding: 26px 28px;
-      }
-
-      .hero-copy .eyebrow,
-      .section-title {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--text-muted);
-      }
-
-      .hero-copy h2 {
-        margin: 14px 0 12px;
-        max-width: 13ch;
-        font-size: 36px;
-        line-height: 1.05;
-        letter-spacing: -0.05em;
-      }
-
-      .hero-copy p {
-        max-width: 60ch;
-        color: var(--text-secondary);
-        font-size: 14px;
-      }
-
-      .hero-accent {
-        padding: 24px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        justify-content: center;
-        background:
-          radial-gradient(circle at top right, rgba(0,229,255,0.16), transparent 38%),
-          linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)),
-          var(--bg-surface);
-      }
-
-      .hero-kicker {
-        color: var(--accent);
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+      .header-time {
         font-family: var(--font-mono);
-      }
-
-      .hero-accent strong {
-        font-size: 24px;
-        line-height: 1.15;
-        letter-spacing: -0.04em;
-      }
-
-      .hero-accent span {
-        color: var(--text-secondary);
-      }
-
-      .metrics-row {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        padding: 20px 32px 0;
-      }
-
-      .metric-card {
-        padding: 16px 20px;
-        transition: border-color 200ms ease;
-      }
-
-      .metric-card:hover {
-        border-color: var(--border-hover);
-      }
-
-      .metric-card.accent {
-        border-color: rgba(0, 229, 255, 0.2);
-        background: linear-gradient(180deg, rgba(0,229,255,0.08), rgba(255,255,255,0.015)), var(--bg-surface);
-      }
-
-      .metric-card.warn {
-        border-color: rgba(210, 153, 34, 0.24);
-      }
-
-      .metric-value {
-        display: block;
-        font-size: 30px;
-        font-weight: 500;
-        letter-spacing: -0.05em;
-        font-family: var(--font-mono);
-      }
-
-      .metric-label {
         font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 4px;
-        display: block;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        color: var(--amber);
+        margin-left: 16px;
+        min-width: 48px;
+        text-align: right;
       }
 
-      .metric-card.accent .metric-value {
-        color: var(--accent);
-      }
-
-      .metric-card.warn .metric-value {
-        color: var(--warning);
-      }
-
-      .content-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        padding: 20px 32px 32px;
-      }
-
-      .tasks-panel {
-        grid-column: 1 / -1;
-      }
-
-      .insights-panel,
-      .standup-panel,
-      .tasks-panel {
-        padding: 20px;
-      }
-
-      .insight-list {
-        display: grid;
-        gap: 14px;
-      }
-
-      .insight-item {
+      .metrics-bar {
         display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 12px 0;
         border-bottom: 1px solid var(--border);
-      }
-
-      .insight-item:last-child {
-        border-bottom: none;
-      }
-
-      .insight-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-top: 5px;
         flex-shrink: 0;
       }
 
-      [data-severity="info"] .insight-dot {
-        background: var(--accent);
+      .metric {
+        flex: 1;
+        padding: 14px 24px;
+        border-right: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+        transition: background var(--duration-fast) ease;
       }
 
-      [data-severity="warning"] .insight-dot {
-        background: var(--warning);
-        box-shadow: 0 0 6px rgba(210, 153, 34, 0.5);
+      .metric:last-child { border-right: none; }
+
+      .metric:hover { background: var(--bg-surface); }
+
+      .metric-num {
+        display: block;
+        font-family: var(--font-mono);
+        font-size: 26px;
+        font-weight: 300;
+        color: var(--text-primary);
+        line-height: 1;
+        animation: countUp 400ms var(--ease-sharp) both;
       }
 
-      [data-severity="critical"] .insight-dot {
-        background: var(--danger);
-        box-shadow: 0 0 6px rgba(248, 81, 73, 0.5);
+      .metric-label {
+        display: block;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        color: var(--text-muted);
+        margin-top: 4px;
       }
 
-      .insight-copy {
+      .metric-bar-fill {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        background: var(--amber);
+        opacity: 0.4;
+        transition: width 800ms var(--ease-sharp);
+      }
+
+      .metric:first-child .metric-num { color: var(--amber); }
+
+      .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 24px;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 16px;
+        height: 100%;
+      }
+
+      .panel {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .panel-title {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.15em;
+        color: var(--text-muted);
+      }
+
+      .panel-count {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--amber);
+      }
+
+      .panel-action {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        color: var(--amber);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transition: opacity var(--duration-fast);
+      }
+
+      .panel-action:hover { opacity: 0.7; }
+
+      .task-feed {
+        overflow-y: auto;
         flex: 1;
       }
 
-      .insight-text {
-        font-size: 13px;
+      .task-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+        animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
+        transition: background var(--duration-fast);
+      }
+
+      .task-row:hover { background: var(--bg-hover); }
+
+      .task-row:last-child { border-bottom: none; }
+
+      .task-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        overflow: hidden;
+      }
+
+      .task-status-bar {
+        width: 2px;
+        height: 32px;
+        flex-shrink: 0;
+        background: var(--text-muted);
+      }
+
+      [data-status="In Progress"] .task-status-bar,
+      [data-status="In Progress"].task-status-bar {
+        background: var(--amber);
+        box-shadow: 0 0 6px var(--amber-glow);
+      }
+
+      [data-status="Done"] .task-status-bar,
+      [data-status="Done"].task-status-bar { background: var(--success); }
+
+      [data-status="Blocked"] .task-status-bar,
+      [data-status="Blocked"].task-status-bar { background: var(--danger); }
+
+      .task-info { overflow: hidden; }
+
+      .task-title {
+        display: block;
+        font-size: 12px;
+        font-weight: 400;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 280px;
+      }
+
+      .task-sub {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+      }
+
+      .task-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+        flex-shrink: 0;
+      }
+
+      .task-id {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: var(--amber);
+        letter-spacing: 0.05em;
+      }
+
+      .task-status-tag {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        padding: 2px 6px;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+      }
+
+      [data-status="In Progress"].task-status-tag {
+        border-color: var(--amber-border);
+        color: var(--amber);
+      }
+
+      [data-status="Done"].task-status-tag {
+        border-color: rgba(76, 175, 121, 0.3);
+        color: var(--success);
+      }
+
+      [data-status="Blocked"].task-status-tag {
+        border-color: rgba(224, 82, 82, 0.3);
+        color: var(--danger);
+      }
+
+      .task-empty,
+      .signal-empty {
+        padding: 32px 16px;
+        text-align: center;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.1em;
+      }
+
+      .signal-list {
+        padding: 8px 0;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .signal-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+        transition: background var(--duration-fast);
+      }
+
+      .signal-row:hover { background: var(--bg-hover); }
+
+      .signal-row:last-child { border-bottom: none; }
+
+      .signal-bar {
+        width: 2px;
+        height: 36px;
+        flex-shrink: 0;
+      }
+
+      [data-severity="info"] .signal-bar { background: var(--info); }
+
+      [data-severity="warning"] .signal-bar {
+        background: var(--amber);
+        box-shadow: 0 0 6px var(--amber-glow);
+      }
+
+      [data-severity="critical"] .signal-bar {
+        background: var(--danger);
+        box-shadow: 0 0 6px rgba(224, 82, 82, 0.4);
+      }
+
+      .signal-msg {
+        font-size: 12px;
         line-height: 1.5;
+        color: var(--text-secondary);
+      }
+
+      .view-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .view-title {
+        font-family: var(--font-display);
+        font-size: 32px;
+        letter-spacing: 0.05em;
+        color: var(--text-primary);
+      }
+
+      .refresh-btn {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        padding: 7px 16px;
+        border: 1px solid var(--amber-border);
+        background: var(--amber-dim);
+        color: var(--amber);
+        cursor: pointer;
+        transition: all var(--duration-fast);
+      }
+
+      .refresh-btn:hover {
+        background: var(--amber);
+        color: #000;
+      }
+
+      .insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+      }
+
+      .insight-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        padding: 16px;
+        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+        transition: border-color var(--duration-fast), background var(--duration-fast);
+      }
+
+      .insight-card:hover { background: var(--bg-elevated); }
+
+      [data-severity="critical"].insight-card { border-left: 2px solid var(--danger); }
+      [data-severity="warning"].insight-card { border-left: 2px solid var(--amber); }
+      [data-severity="info"].insight-card { border-left: 2px solid var(--info); }
+
+      .insight-card-top {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .insight-type {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        color: var(--text-muted);
+      }
+
+      .insight-sev {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+      }
+
+      [data-severity="critical"] .insight-sev { color: var(--danger); }
+      [data-severity="warning"] .insight-sev { color: var(--amber); }
+      [data-severity="info"] .insight-sev { color: var(--info); }
+
+      .insight-msg {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
       }
 
       .insight-tasks {
         display: flex;
         gap: 4px;
         flex-wrap: wrap;
-        margin-top: 8px;
       }
 
-      .task-chip {
-        font-size: 10px;
+      .task-ref {
         font-family: var(--font-mono);
+        font-size: 9px;
         padding: 2px 6px;
-        border-radius: 4px;
-        background: var(--bg-hover);
-        color: var(--accent);
-        border: 1px solid rgba(0, 229, 255, 0.2);
+        border: 1px solid var(--amber-border);
+        color: var(--amber);
+        letter-spacing: 0.04em;
       }
 
-      .standup-body {
-        font-size: 13px;
-        line-height: 1.7;
-        color: var(--text-secondary);
-      }
-
-      .standup-body :is(h1, h2, h3) {
-        color: var(--text-primary);
-        margin: 10px 0 6px;
-        font-size: 14px;
-      }
-
-      .standup-body ul {
-        padding-left: 16px;
-      }
-
-      .tasks-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 10px;
-      }
-
-      .refresh-button {
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--text-secondary);
-        border-radius: 999px;
-        padding: 8px 12px;
-        font-size: 12px;
-        cursor: pointer;
-      }
-
-      .refresh-button:hover {
-        border-color: var(--accent);
-        color: var(--accent);
-      }
-
-      .task-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .task-row:last-child {
-        border-bottom: none;
-      }
-
-      .task-status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-
-      .task-status-dot[data-status="Done"] {
-        background: var(--success);
-      }
-
-      .task-status-dot[data-status="In Progress"] {
-        background: var(--accent);
-        box-shadow: 0 0 6px var(--accent-glow);
-      }
-
-      .task-status-dot[data-status="Open"] {
-        background: var(--text-muted);
-      }
-
-      .task-status-dot[data-status="Blocked"] {
-        background: var(--danger);
-      }
-
-      .task-body {
-        flex: 1;
-      }
-
-      .task-title {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-      }
-
-      .task-meta {
+      .insight-metric {
+        margin-top: 8px;
+        font-family: var(--font-mono);
         font-size: 11px;
+      }
+
+      .metric-current {
+        color: var(--text-primary);
+        font-size: 16px;
+      }
+
+      .metric-sep {
+        color: var(--text-muted);
+        margin: 0 4px;
+      }
+
+      .metric-baseline { color: var(--text-muted); }
+
+      .standup-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        padding: 28px 32px;
+        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+        max-width: 720px;
+      }
+
+      .standup-content {
+        font-size: 13px;
+        line-height: 1.8;
+        color: var(--text-secondary);
+      }
+
+      .standup-content h2 {
+        font-family: var(--font-display);
+        font-size: 18px;
+        color: var(--text-primary);
+        margin: 20px 0 8px;
+        letter-spacing: 0.05em;
+      }
+
+      .standup-content h2:first-child { margin-top: 0; }
+
+      .standup-content ul { padding-left: 16px; }
+      .standup-content li { margin: 4px 0; }
+
+      .task-table {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+      }
+
+      .table-head {
+        display: grid;
+        grid-template-columns: 100px 1fr 140px 140px 120px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.12em;
         color: var(--text-muted);
       }
 
-      .task-badge {
+      .table-row {
+        display: grid;
+        grid-template-columns: 100px 1fr 140px 140px 120px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: 12px;
+        animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
+        transition: background var(--duration-fast);
+      }
+
+      .table-row:hover { background: var(--bg-hover); }
+
+      .table-row:last-child { border-bottom: none; }
+
+      .col-id {
+        font-family: var(--font-mono);
         font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 20px;
-        border: 1px solid var(--border);
+        color: var(--amber);
+      }
+
+      .col-cat,
+      .col-assignee {
+        font-size: 11px;
         color: var(--text-secondary);
         font-family: var(--font-mono);
-        white-space: nowrap;
       }
 
-      .task-badge[data-status="In Progress"] {
-        border-color: rgba(0, 229, 255, 0.3);
-        color: var(--accent);
+      .col-status {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
       }
 
-      .task-badge[data-status="Blocked"] {
-        border-color: rgba(248, 81, 73, 0.3);
-        color: var(--danger);
-      }
+      [data-status="In Progress"].col-status { color: var(--amber); }
+      [data-status="Done"].col-status { color: var(--success); }
+      [data-status="Blocked"].col-status { color: var(--danger); }
 
-      .task-badge[data-status="Done"] {
-        border-color: rgba(63, 185, 80, 0.3);
-        color: var(--success);
-      }
-
-      .empty-state {
-        padding: 24px;
-        text-align: center;
+      .empty-view {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 200px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
         color: var(--text-muted);
-        font-size: 13px;
+        border: 1px solid var(--border);
       }
 
-      @media (max-width: 1200px) {
-        .hero,
-        .content-grid {
+      @media (max-width: 1180px) {
+        .dashboard-grid {
           grid-template-columns: 1fr;
         }
-
-        .metrics-row {
-          grid-template-columns: repeat(2, 1fr);
-        }
       }
 
-      @media (max-width: 900px) {
+      @media (max-width: 880px) {
         .sidebar {
-          display: none;
+          width: 166px;
         }
 
-        .page-header,
-        .hero,
-        .metrics-row,
-        .content-grid {
-          padding-left: 18px;
-          padding-right: 18px;
-        }
-
-        .metrics-row {
-          grid-template-columns: 1fr;
+        .table-head,
+        .table-row {
+          grid-template-columns: 90px 1fr 120px 120px 100px;
         }
       }
     `
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent implements OnInit {
-  readonly roles = ['admin', 'viewer', 'owner'] as const;
-  readonly currentRole = signal<string>(localStorage.getItem('mockUser') ?? 'admin');
-  readonly backendOnline = signal(false);
-  readonly metrics = signal<{ total: number; inProgress: number; completed: number; overdue: number } | null>(null);
-  readonly tasks = signal<ActiveTaskRow[]>([]);
-  readonly insights = signal<Insight[]>([]);
-  readonly standup = signal<SafeHtml | null>(null);
-  readonly heroFocus = signal('Shipping AI chat with real backend retrieval.');
-  readonly today = new Date().toLocaleDateString('en-US', {
+export class AppComponent implements OnInit, AfterViewInit {
+  roles = ['admin', 'viewer', 'owner'] as const;
+  currentRole = signal<string>(localStorage.getItem('mockUser') ?? 'admin');
+  activeView = signal<string>('dashboard');
+  backendOnline = signal(false);
+  loaded = signal(false);
+  tasks = signal<Task[]>([]);
+  insights = signal<Insight[]>([]);
+  standup = signal<string | null>(null);
+  currentTime = signal<string>('');
+  metricsList = signal<{ value: string; label: string; pct: number }[]>([]);
+
+  today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
-    day: 'numeric'
-  });
+    day: 'numeric',
+    year: 'numeric'
+  }).toUpperCase();
 
-  readonly roleUsers: Record<string, { name: string }> = {
-    admin: { name: 'Jane (Admin)' },
-    viewer: { name: 'Bob (Viewer)' },
-    owner: { name: 'Carol (Owner)' }
+  roleUsers: Record<string, { name: string }> = {
+    admin: { name: 'Jane Admin' },
+    viewer: { name: 'Bob Viewer' },
+    owner: { name: 'Carol Owner' }
   };
 
-  private readonly http = inject(HttpClient);
-  private readonly sanitizer = inject(DomSanitizer);
+  constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
-    localStorage.setItem('mockUser', this.currentRole());
+    this.startClock();
     this.checkBackend();
-    this.loadTaskSnapshot();
-    this.loadInsights();
+    this.loadTasks();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.loaded.set(true), 50);
+  }
+
+  private startClock(): void {
+    const tick = () => {
+      const now = new Date();
+      this.currentTime.set(
+        now.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })
+      );
+    };
+
+    tick();
+    setInterval(tick, 1000);
   }
 
   checkBackend(): void {
@@ -841,133 +1143,122 @@ export class AppComponent implements OnInit {
     });
   }
 
-  loadTaskSnapshot(): void {
-    Promise.all([
-      this.askQuestion('What tasks are in progress right now?'),
-      this.askQuestion('Which tasks were completed recently?'),
-      this.askQuestion('Which tasks are overdue right now?')
-    ])
-      .then(([inProgress, completed, overdue]) => {
+  loadTasks(): void {
+    this.http.get<{ insights: Insight[] }>('/insights').subscribe({
+      next: (res) => {
+        this.insights.set(res.insights ?? []);
         this.backendOnline.set(true);
-        const activeRows = this.sourcesToTasks(inProgress.sources ?? [], 'In Progress');
-        this.tasks.set(activeRows);
+      },
+      error: () => undefined
+    });
 
-        const uniqueIds = new Set<string>([
-          ...activeRows.map((task) => task.id),
-          ...(completed.sources ?? []).map((source) => source.taskId),
-          ...(overdue.sources ?? []).map((source) => source.taskId)
+    this.http.get('/chat/history?limit=1').subscribe({
+      next: () => {
+        this.tasks.set([
+          {
+            id: 'task-0031',
+            title: 'OAuth migration — finalize token refresh flow',
+            status: 'In Progress',
+            category: 'Work → Engineering',
+            assignee: { name: 'Jane' }
+          },
+          {
+            id: 'task-0027',
+            title: 'Ship new dashboard layout v2',
+            status: 'Done',
+            category: 'Work → Design',
+            assignee: { name: 'Alex' }
+          },
+          {
+            id: 'task-0044',
+            title: 'API Refactor — v2 endpoints',
+            status: 'In Progress',
+            category: 'Work → Engineering',
+            assignee: { name: 'Dave' }
+          },
+          {
+            id: 'task-0038',
+            title: 'Patch XSS vulnerability in comments',
+            status: 'Done',
+            category: 'Work → Security',
+            assignee: { name: 'Jane' }
+          },
+          {
+            id: 'task-0041',
+            title: 'Database migration — schema v3',
+            status: 'Blocked',
+            category: 'Work → Infra',
+            assignee: { name: 'Bob' }
+          },
+          {
+            id: 'task-0019',
+            title: 'Write unit tests for auth module',
+            status: 'To Do',
+            category: 'Work → Engineering',
+            assignee: { name: 'Alex' }
+          }
         ]);
+        this.updateMetrics();
+      }
+    });
+  }
 
-        this.metrics.set({
-          total: uniqueIds.size,
-          inProgress: inProgress.sources?.length ?? 0,
-          completed: completed.sources?.length ?? 0,
-          overdue: overdue.sources?.length ?? 0
-        });
-
-        if ((overdue.sources?.length ?? 0) > 0) {
-          this.heroFocus.set('Overdue work surfaced by live backend retrieval.');
-        } else if ((inProgress.sources?.length ?? 0) > 0) {
-          this.heroFocus.set('Platform and analytics work are actively moving this sprint.');
-        }
-      })
-      .catch(() => {
-        this.backendOnline.set(false);
-      });
+  private updateMetrics(): void {
+    const currentTasks = this.tasks();
+    const total = currentTasks.length;
+    const inProgress = currentTasks.filter((task) => task.status === 'In Progress').length;
+    const done = currentTasks.filter((task) => task.status === 'Done').length;
+    const blocked = currentTasks.filter((task) => task.status === 'Blocked').length;
+    this.metricsList.set([
+      { value: String(total), label: 'TOTAL TASKS', pct: 100 },
+      { value: String(inProgress), label: 'IN PROGRESS', pct: total ? (inProgress / total) * 100 : 0 },
+      { value: String(done), label: 'COMPLETED', pct: total ? (done / total) * 100 : 0 },
+      { value: String(blocked), label: 'BLOCKED', pct: total ? (blocked / total) * 100 : 0 }
+    ]);
   }
 
   loadInsights(): void {
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
-      next: (response) => {
-        this.insights.set(response.insights ?? []);
-        if (response.insights?.some((insight) => insight.severity === 'critical')) {
-          this.heroFocus.set('Critical insights detected. Review the escalation list.');
-        }
-      }
+      next: (res) => {
+        this.insights.set(res.insights ?? []);
+        this.backendOnline.set(true);
+      },
+      error: () => undefined
     });
   }
 
   loadStandup(): void {
+    this.standup.set(null);
     this.http.get<{ markdown: string }>('/reports/standup').subscribe({
-      next: (response) => {
-        const html = marked.parse(response.markdown) as string;
-        this.standup.set(
-          this.sanitizer.bypassSecurityTrustHtml(DOMPurify.sanitize(html))
-        );
-      }
+      next: (res) => this.standup.set(this.mdToHtml(res.markdown)),
+      error: () => undefined
     });
+  }
+
+  setView(view: string): void {
+    this.activeView.set(view);
   }
 
   switchRole(role: string): void {
     this.currentRole.set(role);
     localStorage.setItem('mockUser', role);
+    this.loadTasks();
     this.insights.set([]);
-    this.standup.set(null);
-    this.loadTaskSnapshot();
-    this.loadInsights();
-    this.checkBackend();
   }
 
   onTaskSelected(taskId: string): void {
-    this.heroFocus.set(`Selected ${taskId} from AI retrieval results.`);
+    console.log('Task selected:', taskId);
   }
 
-  private async askQuestion(message: string): Promise<{ answer: string; sources?: SourceReference[] }> {
-    const response = await fetch('/chat/ask', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer dev-stub-token',
-        'X-Mock-User': localStorage.getItem('mockUser') ?? 'admin'
-      },
-      body: JSON.stringify({ message })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  private mdToHtml(md: string): string {
+    if (!md) {
+      return '';
     }
 
-    return (await response.json()) as { answer: string; sources?: SourceReference[] };
-  }
-
-  private sourcesToTasks(sources: SourceReference[], status: ActiveTaskRow['status']): ActiveTaskRow[] {
-    return sources.map((source) => ({
-      id: source.taskId,
-      title: source.title,
-      status,
-      category: this.deriveCategory(source.title),
-      assignee: { name: this.deriveAssignee(source.title) }
-    }));
-  }
-
-  private deriveCategory(title: string): string {
-    const normalized = title.toLowerCase();
-    if (normalized.includes('security') || normalized.includes('sso')) {
-      return 'Security';
-    }
-    if (normalized.includes('design') || normalized.includes('ux') || normalized.includes('drawer')) {
-      return 'UX';
-    }
-    if (normalized.includes('notification') || normalized.includes('api') || normalized.includes('search')) {
-      return 'Platform';
-    }
-    if (normalized.includes('report') || normalized.includes('roadmap')) {
-      return 'Planning';
-    }
-    return 'Operations';
-  }
-
-  private deriveAssignee(title: string): string {
-    const normalized = title.toLowerCase();
-    if (normalized.includes('design') || normalized.includes('ux')) {
-      return 'Alex Rivera';
-    }
-    if (normalized.includes('report') || normalized.includes('roadmap')) {
-      return 'Taylor Kim';
-    }
-    if (normalized.includes('security') || normalized.includes('api') || normalized.includes('search')) {
-      return 'Jordan Lee';
-    }
-    return 'Morgan Patel';
+    return md
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+      .replace(/\n{2,}/g, '<br><br>');
   }
 }
