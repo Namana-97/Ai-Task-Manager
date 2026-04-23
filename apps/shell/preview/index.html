@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Task Manager Shell Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08111f;
+        --bg-soft: #0d1829;
+        --panel: rgba(8, 17, 31, 0.84);
+        --panel-strong: rgba(14, 24, 40, 0.94);
+        --line: rgba(255, 255, 255, 0.08);
+        --text: #f8fafc;
+        --muted: rgba(232, 240, 255, 0.68);
+        --cyan: #74e6ff;
+        --mint: #9effd6;
+        --gold: #ffd28a;
+        --shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 10% 10%, rgba(116, 230, 255, 0.18), transparent 24%),
+          radial-gradient(circle at 85% 18%, rgba(158, 255, 214, 0.12), transparent 26%),
+          radial-gradient(circle at 50% 100%, rgba(255, 210, 138, 0.1), transparent 34%),
+          linear-gradient(180deg, #07101b 0%, #0b1322 54%, #070d16 100%);
+        color: var(--text);
+        font-family: "Manrope", sans-serif;
+        overflow-x: hidden;
+      }
+
+      .noise {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.08;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+        background-size: 120px 120px;
+        mask-image: radial-gradient(circle at center, black, transparent 80%);
+      }
+
+      .orb {
+        position: fixed;
+        border-radius: 999px;
+        filter: blur(50px);
+        opacity: 0.32;
+        pointer-events: none;
+      }
+
+      .orb-a {
+        width: 280px;
+        height: 280px;
+        top: 110px;
+        left: -70px;
+        background: rgba(116, 230, 255, 0.2);
+      }
+
+      .orb-b {
+        width: 360px;
+        height: 360px;
+        right: -80px;
+        top: 340px;
+        background: rgba(158, 255, 214, 0.12);
+      }
+
+      .app-shell {
+        position: relative;
+        padding: 28px;
+      }
+
+      .frame {
+        position: relative;
+        max-width: 1480px;
+        margin: 0 auto;
+        border: 1px solid var(--line);
+        border-radius: 32px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 24%),
+          rgba(6, 12, 23, 0.78);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(20px);
+      }
+
+      .frame::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(140deg, rgba(255, 255, 255, 0.06), transparent 18%),
+          linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.02));
+        pointer-events: none;
+      }
+
+      .topbar {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, var(--cyan), var(--mint));
+        color: #05101a;
+        font: 700 14px/1 "Space Grotesk", sans-serif;
+      }
+
+      .brand-copy strong,
+      .kpi-value,
+      .hero h1,
+      .section-title,
+      .fab {
+        font-family: "Space Grotesk", sans-serif;
+      }
+
+      .brand-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .brand-copy strong {
+        font-size: 16px;
+        letter-spacing: 0.02em;
+      }
+
+      .brand-copy span,
+      .nav a,
+      .hero-copy p,
+      .insight p,
+      .activity-item span,
+      .meta-row,
+      .footer-note {
+        color: var(--muted);
+      }
+
+      .nav {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .nav a {
+        text-decoration: none;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: 14px;
+      }
+
+      .nav a.active {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--line);
+      }
+
+      .workspace {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) 360px;
+        gap: 22px;
+        padding: 24px;
+      }
+
+      .main-column {
+        display: grid;
+        gap: 22px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+        gap: 22px;
+      }
+
+      .hero-copy,
+      .hero-aside,
+      .glass-card,
+      .sidebar-card,
+      .panel {
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+          rgba(10, 18, 31, 0.82);
+        backdrop-filter: blur(16px);
+      }
+
+      .hero-copy {
+        padding: 32px;
+        border-radius: 28px;
+      }
+
+      .hero-copy .eyebrow,
+      .section-eyebrow,
+      .panel .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--cyan);
+        font: 700 12px/1.1 "Space Grotesk", sans-serif;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .hero-copy h1 {
+        margin: 18px 0 16px;
+        max-width: 10ch;
+        font-size: clamp(58px, 7vw, 108px);
+        line-height: 0.92;
+        letter-spacing: -0.05em;
+      }
+
+      .hero-copy p {
+        max-width: 58ch;
+        font-size: 18px;
+        line-height: 1.65;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 26px;
+      }
+
+      .primary-button,
+      .secondary-button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: 700 14px/1 "Space Grotesk", sans-serif;
+        cursor: pointer;
+      }
+
+      .primary-button {
+        color: #05101a;
+        background: linear-gradient(135deg, var(--cyan), var(--mint));
+      }
+
+      .secondary-button {
+        color: var(--text);
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .hero-aside {
+        border-radius: 28px;
+        padding: 26px;
+        display: grid;
+        gap: 18px;
+        align-content: start;
+      }
+
+      .hero-metric {
+        padding: 18px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .hero-metric strong {
+        display: block;
+        font-size: 32px;
+        margin-bottom: 6px;
+      }
+
+      .grid-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .glass-card {
+        padding: 24px;
+        border-radius: 24px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .card-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        font-size: 20px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .kpi-value {
+        font-size: 40px;
+        letter-spacing: -0.05em;
+      }
+
+      .trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .trend.good {
+        color: var(--mint);
+      }
+
+      .trend.warn {
+        color: var(--gold);
+      }
+
+      .progress-track {
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+        margin-top: 20px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--cyan), var(--mint));
+      }
+
+      .wide-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+        gap: 18px;
+      }
+
+      .insight-list,
+      .activity-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .insight,
+      .activity-item {
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .insight strong,
+      .activity-item strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 12px;
+      }
+
+      .timeline-row {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .timeline-label {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .timeline-bar {
+        position: relative;
+        height: 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        overflow: hidden;
+      }
+
+      .timeline-bar > span {
+        position: absolute;
+        inset: 0 auto 0 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, rgba(116, 230, 255, 0.88), rgba(158, 255, 214, 0.88));
+      }
+
+      .sidebar {
+        display: grid;
+        gap: 18px;
+      }
+
+      .sidebar-card {
+        padding: 22px;
+        border-radius: 24px;
+      }
+
+      .sidebar-card h3 {
+        margin: 12px 0 16px;
+        font: 700 22px/1.05 "Space Grotesk", sans-serif;
+      }
+
+      .priority-stack,
+      .pill-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .priority-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .pill-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .pill {
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: center;
+      }
+
+      .fab {
+        position: fixed;
+        right: 32px;
+        bottom: 32px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 18px;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--cyan), var(--mint));
+        color: #05101a;
+        font-size: 14px;
+        box-shadow: 0 22px 50px rgba(116, 230, 255, 0.28);
+        cursor: pointer;
+        transition: transform 180ms ease;
+      }
+
+      .fab:hover {
+        transform: translateY(-2px);
+      }
+
+      .panel {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        width: min(430px, calc(100vw - 24px));
+        height: calc(100vh - 36px);
+        border-radius: 28px;
+        color: var(--text);
+        transform: translateX(calc(100% + 32px));
+        transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        box-shadow: var(--shadow);
+      }
+
+      .panel.open {
+        transform: translateX(0);
+      }
+
+      .panel .header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 14px;
+      }
+
+      .panel .header h2 {
+        margin: 10px 0 0;
+        font: 700 28px/1 "Space Grotesk", sans-serif;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .ghost-button,
+      .prompt,
+      .send-button {
+        border-radius: 999px;
+        cursor: pointer;
+        font: 700 13px/1 "Space Grotesk", sans-serif;
+      }
+
+      .ghost-button,
+      .prompt {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        padding: 10px 12px;
+      }
+
+      .messages {
+        flex: 1;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 10px 4px 16px;
+      }
+
+      .prompt-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .message-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .bubble {
+        color: var(--text);
+        line-height: 1.65;
+        animation: slideUp 220ms ease-out;
+      }
+
+      .bubble.user {
+        margin-left: auto;
+        max-width: 84%;
+        padding: 15px 16px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(116, 230, 255, 0.2), rgba(116, 230, 255, 0.08));
+        border: 1px solid rgba(116, 230, 255, 0.18);
+      }
+
+      .bubble.assistant {
+        width: 100%;
+        padding: 4px 0;
+      }
+
+      .cursor {
+        margin-left: 4px;
+        color: var(--cyan);
+        animation: blink 1s steps(2, start) infinite;
+      }
+
+      .sources {
+        display: grid;
+        gap: 10px;
+      }
+
+      .source {
+        padding: 14px 15px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      .source .id {
+        margin-bottom: 6px;
+        color: var(--cyan);
+        font: 700 11px/1.2 "Space Grotesk", sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .source-title {
+        margin-bottom: 4px;
+        font-weight: 700;
+      }
+
+      .source-score {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .composer {
+        display: grid;
+        gap: 12px;
+      }
+
+      .composer-shell {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .composer textarea {
+        min-height: 92px;
+        resize: vertical;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text);
+        padding: 6px 8px;
+        font: inherit;
+      }
+
+      .send-button {
+        align-self: end;
+        border: 0;
+        background: linear-gradient(135deg, var(--cyan), var(--mint));
+        color: #05101a;
+        padding: 12px 16px;
+      }
+
+      .footer-note {
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes blink {
+        0%,
+        49% {
+          opacity: 1;
+        }
+        50%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      @media (max-width: 1180px) {
+        .workspace,
+        .hero,
+        .wide-card {
+          grid-template-columns: 1fr;
+        }
+
+        .grid-cards {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .app-shell {
+          padding: 14px;
+        }
+
+        .topbar,
+        .workspace {
+          padding: 18px;
+        }
+
+        .hero-copy h1 {
+          font-size: clamp(44px, 16vw, 74px);
+        }
+
+        .nav {
+          display: none;
+        }
+
+        .fab {
+          right: 18px;
+          bottom: 18px;
+        }
+
+        .panel {
+          top: 10px;
+          right: 10px;
+          width: calc(100vw - 20px);
+          height: calc(100vh - 20px);
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="noise"></div>
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+
+    <div class="app-shell">
+      <div class="frame">
+        <header class="topbar">
+          <div class="brand">
+            <div class="brand-mark">ATM</div>
+            <div class="brand-copy">
+              <strong>AI Task Manager</strong>
+              <span>Operator workspace preview</span>
+            </div>
+          </div>
+
+          <nav class="nav">
+            <a href="#" class="active">Overview</a>
+            <a href="#">Tasks</a>
+            <a href="#">Insights</a>
+            <a href="#">Automation</a>
+          </nav>
+        </header>
+
+        <section class="workspace">
+          <div class="main-column">
+            <section class="hero">
+              <article class="hero-copy">
+                <div class="eyebrow">Standalone Preview</div>
+                <h1>Run the week with signals, not guesswork.</h1>
+                <p>
+                  A sharper command surface for tracking risk, throughput, and AI-assisted task
+                  retrieval without drowning the screen in generic dashboard chrome.
+                </p>
+                <div class="hero-actions">
+                  <button class="primary-button" type="button">Open AI Assistant</button>
+                  <button class="secondary-button" type="button">View Weekly Brief</button>
+                </div>
+              </article>
+
+              <aside class="hero-aside">
+                <div class="section-eyebrow">Live Snapshot</div>
+                <div class="hero-metric">
+                  <strong>84%</strong>
+                  <span>delivery confidence across active initiatives</span>
+                </div>
+                <div class="hero-metric">
+                  <strong>3</strong>
+                  <span>blocked tasks need escalation before Friday</span>
+                </div>
+                <div class="hero-metric">
+                  <strong>5.2h</strong>
+                  <span>average response time to task drift this sprint</span>
+                </div>
+              </aside>
+            </section>
+
+            <section class="grid-cards">
+              <article class="glass-card">
+                <div class="card-top">
+                  <div>
+                    <p class="section-title">Sprint Health</p>
+                    <div class="kpi-value">14</div>
+                  </div>
+                  <div class="card-icon">↗</div>
+                </div>
+                <div class="meta-row">Active tasks with strong momentum across design and platform.</div>
+                <div class="progress-track"><div class="progress-fill" style="width: 78%"></div></div>
+                <div class="trend good">+9% throughput vs last week</div>
+              </article>
+
+              <article class="glass-card">
+                <div class="card-top">
+                  <div>
+                    <p class="section-title">Blocked Work</p>
+                    <div class="kpi-value">3</div>
+                  </div>
+                  <div class="card-icon">!</div>
+                </div>
+                <div class="meta-row">Security and migration issues are the main drag on release pace.</div>
+                <div class="progress-track"><div class="progress-fill" style="width: 34%"></div></div>
+                <div class="trend warn">needs intervention today</div>
+              </article>
+
+              <article class="glass-card">
+                <div class="card-top">
+                  <div>
+                    <p class="section-title">Completed</p>
+                    <div class="kpi-value">5</div>
+                  </div>
+                  <div class="card-icon">✓</div>
+                </div>
+                <div class="meta-row">Visible wins landed in UX polish, regressions, and notification tuning.</div>
+                <div class="progress-track"><div class="progress-fill" style="width: 62%"></div></div>
+                <div class="trend good">strong finishers this week</div>
+              </article>
+            </section>
+
+            <section class="glass-card wide-card">
+              <div>
+                <div class="section-eyebrow">Priority View</div>
+                <h2 class="section-title" style="font-size: 30px; margin: 14px 0 18px;">Where the team needs attention next</h2>
+                <div class="insight-list">
+                  <div class="insight">
+                    <strong>Release readiness is uneven</strong>
+                    <p>Security work is pacing behind plan, with the highest concentration of overdue items.</p>
+                  </div>
+                  <div class="insight">
+                    <strong>Platform work is compounding value</strong>
+                    <p>Notification tuning and search relevance improvements are creating the clearest throughput gains.</p>
+                  </div>
+                  <div class="insight">
+                    <strong>AI retrieval is demo-ready</strong>
+                    <p>The assistant panel is optimized for deterministic mocked streaming during recording.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="section-eyebrow">Weekly Tempo</div>
+                <h3 class="section-title" style="font-size: 24px; margin: 14px 0 18px;">Completion pace</h3>
+                <div class="timeline">
+                  <div class="timeline-row">
+                    <span class="timeline-label">Mon</span>
+                    <div class="timeline-bar"><span style="width: 42%"></span></div>
+                  </div>
+                  <div class="timeline-row">
+                    <span class="timeline-label">Tue</span>
+                    <div class="timeline-bar"><span style="width: 58%"></span></div>
+                  </div>
+                  <div class="timeline-row">
+                    <span class="timeline-label">Wed</span>
+                    <div class="timeline-bar"><span style="width: 72%"></span></div>
+                  </div>
+                  <div class="timeline-row">
+                    <span class="timeline-label">Thu</span>
+                    <div class="timeline-bar"><span style="width: 65%"></span></div>
+                  </div>
+                  <div class="timeline-row">
+                    <span class="timeline-label">Fri</span>
+                    <div class="timeline-bar"><span style="width: 81%"></span></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="sidebar">
+            <section class="sidebar-card">
+              <div class="section-eyebrow">Release Readiness</div>
+              <h3>Focus stack</h3>
+              <div class="priority-stack">
+                <div class="priority-item"><span>Security</span><strong>High Risk</strong></div>
+                <div class="priority-item"><span>Platform</span><strong>On Track</strong></div>
+                <div class="priority-item"><span>Operations</span><strong>Watch</strong></div>
+              </div>
+            </section>
+
+            <section class="sidebar-card">
+              <div class="section-eyebrow">Signals</div>
+              <h3>Fast filters</h3>
+              <div class="pill-list">
+                <div class="pill">Overdue</div>
+                <div class="pill">Blocked</div>
+                <div class="pill">AI Search</div>
+                <div class="pill">Reports</div>
+              </div>
+            </section>
+
+            <section class="sidebar-card">
+              <div class="section-eyebrow">Recent Activity</div>
+              <h3>Notable changes</h3>
+              <div class="activity-list">
+                <div class="activity-item">
+                  <strong>Keyboard navigation shipped</strong>
+                  <span>Task drawer polish completed by UX stream.</span>
+                </div>
+                <div class="activity-item">
+                  <strong>Notification batching tuned</strong>
+                  <span>Platform throughput improved after queue adjustments.</span>
+                </div>
+                <div class="activity-item">
+                  <strong>Migration cluster still blocked</strong>
+                  <span>Operations requires escalation before next review.</span>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </div>
+    </div>
+
+    <button id="fab" class="fab" type="button">Open AI</button>
+
+    <aside id="panel" class="panel">
+      <header class="header">
+        <div>
+          <div class="eyebrow">Secure AI Assistant</div>
+          <h2>Task Chat</h2>
+        </div>
+        <div class="actions">
+          <button id="clear" type="button" class="ghost-button">Clear</button>
+          <button id="close" type="button" class="ghost-button">Close</button>
+        </div>
+      </header>
+
+      <section id="messages" class="messages">
+        <div id="prompt-list" class="prompt-list"></div>
+      </section>
+
+      <form id="composer" class="composer">
+        <div class="composer-shell">
+          <textarea
+            id="message"
+            placeholder="Ask about blockers, throughput, or recent task changes..."></textarea>
+          <button class="send-button" type="submit">Send</button>
+        </div>
+        <div class="footer-note">Mocked streaming stays deterministic for clean demo recording.</div>
+      </form>
+    </aside>
+
+    <script type="module" src="/shell.js"></script>
+  </body>
+  </html>

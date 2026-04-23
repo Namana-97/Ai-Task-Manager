@@ -1,0 +1,12 @@
+Given a task title and description, suggest: category, priority, tags, and effort estimate.
+Return a JSON object only, no preamble.
+
+Schema: { category: string, priority: "Critical"|"High"|"Medium"|"Low",
+           tags: string[], effort: "Small"|"Medium"|"Large" }
+
+Examples:
+{{few_shot_examples}}
+
+Task:
+Title: {{title}}
+Description: {{description}}

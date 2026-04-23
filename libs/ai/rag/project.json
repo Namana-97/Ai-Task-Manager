@@ -1,0 +1,6 @@
+{
+  "name": "ai-rag",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ai/rag/src",
+  "projectType": "library"
+}

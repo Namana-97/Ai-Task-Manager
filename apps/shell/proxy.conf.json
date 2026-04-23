@@ -1,0 +1,33 @@
+{
+  "/api": {
+    "target": "http://localhost:3333",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/api": "" }
+  },
+  "/chat": {
+    "target": "http://localhost:3333",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/reports": {
+    "target": "http://localhost:3333",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/insights": {
+    "target": "http://localhost:3333",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/search": {
+    "target": "http://localhost:3333",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/intents": {
+    "target": "http://localhost:3333",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

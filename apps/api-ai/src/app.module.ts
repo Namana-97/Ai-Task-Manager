@@ -1,0 +1,63 @@
+import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EmbeddingClient, VectorStoreClient } from '@ai-task-manager/ai/embeddings';
+import {
+  AuditLogger,
+  CanaryTokenValidator,
+  InputSanitiser,
+  OutputValidator,
+  SlidingWindowRateLimiter
+} from '@ai-task-manager/ai/guardrails';
+import {
+  AnthropicIntentClassifier,
+  CategorizationFeedbackWriter,
+  TaskActionExecutor,
+  TaskMutationStore
+} from '@ai-task-manager/ai/intents';
+import { LlmClient, PromptLoader, RagEngine } from '@ai-task-manager/ai/rag';
+import { ChatController } from './chat/chat.controller';
+import { ChatService } from './chat/chat.service';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { DatabaseService } from './database/database.service';
+import { ChatHistoryService } from './history/chat-history.service';
+import { TaskRepositoryStub } from './repository/task-repository.stub';
+import { CategorizationFeedbackRepository } from './repository/categorization-feedback.repository';
+import { TaskIndexingService } from './repository/task-indexing.service';
+import { ReportsController } from './reports/reports.controller';
+import { ReportsService } from './reports/reports.service';
+import { InsightsController } from './insights/insights.controller';
+import { InsightsService } from './insights/insights.service';
+import { IntentsController } from './intents/intents.controller';
+import { AppBootstrapService } from './app-bootstrap.service';
+
+@Module({
+  imports: [ScheduleModule.forRoot()],
+  controllers: [ChatController, ReportsController, InsightsController, IntentsController],
+  providers: [
+    AppBootstrapService,
+    AuditLogger,
+    CanaryTokenValidator,
+    ChatHistoryService,
+    ChatService,
+    DatabaseService,
+    EmbeddingClient,
+    InputSanitiser,
+    InsightsService,
+    JwtAuthGuard,
+    LlmClient,
+    OutputValidator,
+    PromptLoader,
+    RagEngine,
+    ReportsService,
+    SlidingWindowRateLimiter,
+    TaskActionExecutor,
+    TaskIndexingService,
+    TaskRepositoryStub,
+    CategorizationFeedbackRepository,
+    VectorStoreClient,
+    AnthropicIntentClassifier,
+    { provide: TaskMutationStore, useExisting: TaskRepositoryStub },
+    { provide: CategorizationFeedbackWriter, useExisting: CategorizationFeedbackRepository }
+  ]
+})
+export class AppModule {}

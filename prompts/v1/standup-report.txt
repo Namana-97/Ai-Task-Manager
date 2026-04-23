@@ -1,0 +1,19 @@
+Generate a concise daily standup report in markdown format for {{userName}} at {{orgName}}.
+
+COMPLETED ({{completedCount}} tasks):
+{{completedTasks}}
+
+IN PROGRESS ({{inProgressCount}} tasks):
+{{inProgressTasks}}
+
+BLOCKED ({{blockedCount}} tasks):
+{{blockedTasks}}
+
+Format: Use the following structure exactly:
+## ✅ Done
+## 🔄 In Progress
+## 🚫 Blocked
+## 💬 Notes
+
+Be factual, reference task titles, keep each section to 2-4 bullet points. Do not add
+information not present in the task data.

@@ -1,0 +1,6 @@
+{
+  "name": "ai-guardrails",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ai/guardrails/src",
+  "projectType": "library"
+}

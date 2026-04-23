@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "declaration": false,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "jest"],
+    "paths": {
+      "@ai-task-manager/ai/embeddings": ["libs/ai/embeddings/src/index.ts"],
+      "@ai-task-manager/ai/rag": ["libs/ai/rag/src/index.ts"],
+      "@ai-task-manager/ai/guardrails": ["libs/ai/guardrails/src/index.ts"],
+      "@ai-task-manager/ai/intents": ["libs/ai/intents/src/index.ts"],
+      "@ai-task-manager/ui/chat": ["libs/ui/chat/src/index.ts"],
+      "@task-ai/ui-chat": ["libs/ui/chat/src/index.ts"]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.d.ts",
+    "libs/**/*.ts",
+    "libs/**/*.d.ts",
+    "scripts/**/*.ts"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ai-intents",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ai/intents/src",
+  "projectType": "library"
+}
