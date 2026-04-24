@@ -22,7 +22,7 @@ import { ChatChunk, ChatMessage } from '../models';
           <div class="chat-header-sub">PRECISION TERMINAL / LIVE RAG</div>
         </div>
         <div class="chat-header-actions">
-          <button class="header-btn" type="button" (click)="clear()">CLEAR</button>
+          <button class="header-btn" type="button" [disabled]="streaming()" (click)="clear()">CLEAR</button>
           <button class="header-btn" type="button" (click)="toggle()">CLOSE</button>
         </div>
       </header>
@@ -43,8 +43,15 @@ import { ChatChunk, ChatMessage } from '../models';
             <div class="bubble">
               <div class="assistant-label">ASSISTANT</div>
               <div class="assistant-content">
-                {{ message.content }}
-                <span class="cursor" *ngIf="message.streaming"></span>
+                <ng-container *ngIf="message.content; else typingState">
+                  {{ message.content }}
+                  <span class="cursor" *ngIf="message.streaming"></span>
+                </ng-container>
+                <ng-template #typingState>
+                  <span class="typing-indicator" *ngIf="message.streaming">
+                    <span></span><span></span><span></span>
+                  </span>
+                </ng-template>
               </div>
             </div>
 
@@ -85,13 +92,14 @@ import { ChatChunk, ChatMessage } from '../models';
       position: fixed;
       right: 0; top: 0; bottom: 0;
       width: 400px;
-      background: var(--bg-base);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-base);
       border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       transform: translateX(100%);
       transition: transform var(--duration-slow) var(--ease-sharp);
       z-index: 200;
+      box-shadow: -14px 0 28px rgba(0, 0, 0, 0.22);
     }
     .chat-panel.open { transform: translateX(0); }
 
@@ -105,13 +113,14 @@ import { ChatChunk, ChatMessage } from '../models';
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       z-index: 199;
-      transition: all var(--duration-mid) var(--ease-sharp);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: transform var(--duration-mid) var(--ease-sharp), background-color var(--duration-mid) var(--ease-sharp), box-shadow var(--duration-mid) var(--ease-sharp), border-color var(--duration-mid) var(--ease-sharp);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.34);
     }
     .chat-fab.panel-open { right: 428px; }
     .chat-fab:hover {
       background: var(--amber-dim);
-      box-shadow: 0 4px 24px var(--amber-glow);
+      box-shadow: 0 8px 20px rgba(240, 165, 0, 0.16);
+      transform: translateY(-1px);
     }
 
     .chat-header {
@@ -145,19 +154,23 @@ import { ChatChunk, ChatMessage } from '../models';
       color: var(--text-secondary);
       padding: 6px 8px;
       cursor: pointer;
-      transition: all var(--duration-fast);
+      transition: background-color 180ms var(--ease-sharp), color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp), opacity 180ms var(--ease-sharp);
     }
     .header-btn:hover {
       border-color: var(--amber-border);
       color: var(--amber);
       background: var(--amber-dim);
     }
+    .header-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
 
     .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 
     .message-user { display: flex; justify-content: flex-end; }
     .message-user .bubble {
-      background: var(--amber-dim);
+      background: rgba(240, 165, 0, 0.16);
       border: 1px solid var(--amber-border);
       color: var(--text-primary);
       padding: 10px 14px;
@@ -169,9 +182,9 @@ import { ChatChunk, ChatMessage } from '../models';
     }
 
     .message-assistant .bubble {
-      background: transparent;
-      border: none;
-      padding: 0;
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid var(--border-subtle);
+      padding: 10px 12px;
       align-self: flex-start;
       width: 100%;
       animation: fadeSlideUp 180ms var(--ease-sharp) both;
@@ -193,9 +206,24 @@ import { ChatChunk, ChatMessage } from '../models';
     .assistant-content {
       font-size: 13px;
       line-height: 1.7;
-      color: var(--text-secondary);
+      color: rgba(232, 230, 224, 0.78);
       white-space: pre-wrap;
     }
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 16px;
+    }
+    .typing-indicator span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(240, 165, 0, 0.7);
+      animation: fadeIn 500ms var(--ease-sharp) infinite alternate;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 120ms; }
+    .typing-indicator span:nth-child(3) { animation-delay: 240ms; }
     .cursor {
       display: inline-block;
       width: 8px; height: 14px;
@@ -216,13 +244,14 @@ import { ChatChunk, ChatMessage } from '../models';
       background: var(--bg-elevated);
       padding: 7px 10px;
       cursor: pointer;
-      transition: all var(--duration-fast);
+      transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp), transform 180ms var(--ease-sharp);
       animation: fadeIn 200ms var(--ease-sharp) both;
       text-align: left;
     }
     .source-card:hover {
       border-color: var(--amber-border);
       background: var(--amber-dim);
+      transform: translateY(-1px);
     }
     .source-id {
       font-family: var(--font-mono);
@@ -264,13 +293,14 @@ import { ChatChunk, ChatMessage } from '../models';
       font-family: var(--font-body);
       text-align: left;
       cursor: pointer;
-      transition: all var(--duration-fast);
+      transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp), color 180ms var(--ease-sharp), transform 180ms var(--ease-sharp);
       line-height: 1.4;
     }
     .prompt-chip:hover {
       border-color: var(--amber-border);
       color: var(--amber);
       background: var(--amber-dim);
+      transform: translateY(-1px);
     }
 
     .chat-input-area {
@@ -293,13 +323,17 @@ import { ChatChunk, ChatMessage } from '../models';
       min-height: 40px;
       max-height: 120px;
       line-height: 1.5;
-      transition: border-color var(--duration-fast);
+      transition: border-color var(--duration-fast), box-shadow var(--duration-fast), background-color var(--duration-fast);
       border-radius: 0;
       outline: none;
     }
-    .chat-textarea:focus { border-color: var(--amber-border); }
+    .chat-textarea:focus {
+      border-color: var(--amber-border);
+      box-shadow: 0 0 0 1px rgba(240, 165, 0, 0.14);
+      background: rgba(255, 255, 255, 0.02);
+    }
     .chat-textarea::placeholder { color: var(--text-muted); }
-    .chat-textarea:disabled { opacity: 0.4; }
+    .chat-textarea:disabled { opacity: 0.45; cursor: not-allowed; }
     .send-btn {
       width: 38px; height: 38px;
       background: var(--amber-dim);
@@ -308,9 +342,10 @@ import { ChatChunk, ChatMessage } from '../models';
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      transition: all var(--duration-fast);
+      transition: transform 160ms var(--ease-sharp), background-color 160ms var(--ease-sharp), color 160ms var(--ease-sharp), opacity 160ms var(--ease-sharp);
     }
-    .send-btn:hover { background: var(--amber); color: #000; }
+    .send-btn:hover { background: var(--amber); color: #000; transform: translateY(-1px); }
+    .send-btn:active { transform: translateY(0); }
     .send-btn:disabled { opacity: 0.3; pointer-events: none; }
 
     @media (max-width: 640px) {

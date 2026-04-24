@@ -156,7 +156,12 @@ interface Task {
                   <span class="panel-count">{{ tasks().length }}</span>
                 </div>
                 <div class="task-feed">
-                  <div class="task-row" *ngFor="let t of tasks(); let i = index" [style.animation-delay]="(i * 40) + 'ms'">
+                  <div
+                    class="task-row"
+                    *ngFor="let t of tasks(); let i = index"
+                    [class.selected]="selectedTaskId() === t.id"
+                    [style.animation-delay]="(i * 40) + 'ms'"
+                    (click)="selectTask(t.id)">
                     <div class="task-left">
                       <div class="task-status-bar" [attr.data-status]="t.status"></div>
                       <div class="task-info">
@@ -169,8 +174,13 @@ interface Task {
                       <span class="task-status-tag" [attr.data-status]="t.status">{{ t.status }}</span>
                     </div>
                   </div>
-                  <div class="task-empty" *ngIf="tasks().length === 0">
-                    <span>LOADING TASK FEED...</span>
+                  <div class="task-empty" *ngIf="tasksLoading()">
+                    <div class="loading-spinner"></div>
+                    <span>SYNCING TASK FEED...</span>
+                  </div>
+                  <div class="task-empty" *ngIf="!tasksLoading() && tasks().length === 0">
+                    <div class="empty-dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <span>NO TASKS AVAILABLE</span>
                   </div>
                 </div>
               </section>
@@ -181,12 +191,20 @@ interface Task {
                   <button class="panel-action" (click)="setView('insights'); loadInsights()">VIEW ALL →</button>
                 </div>
                 <div class="signal-list">
+                  <div class="signal-empty rich-empty-state" *ngIf="insightsLoading()">
+                    <div class="empty-dot-grid loading"><span></span><span></span><span></span><span></span></div>
+                    <span class="empty-title">ANALYZING SIGNALS</span>
+                    <p class="empty-copy">Scanning task activity and generating fresh insight cards.</p>
+                  </div>
                   <div class="signal-row" *ngFor="let ins of insights().slice(0, 4)" [attr.data-severity]="ins.severity">
                     <div class="signal-bar"></div>
                     <p class="signal-msg">{{ ins.message }}</p>
                   </div>
-                  <div class="signal-empty" *ngIf="insights().length === 0">
-                    <span>NO ANOMALIES DETECTED</span>
+                  <div class="signal-empty rich-empty-state" *ngIf="!insightsLoading() && insights().length === 0">
+                    <div class="empty-dot-grid"><span></span><span></span><span></span><span class="active"></span></div>
+                    <span class="empty-title">NO INSIGHTS YET</span>
+                    <p class="empty-copy">No analysis output is available yet. Try running analysis again.</p>
+                    <span class="empty-hint">Hint: recent task activity produces better signals.</span>
                   </div>
                 </div>
               </section>
@@ -196,9 +214,16 @@ interface Task {
           <ng-container *ngIf="activeView() === 'insights'">
             <div class="view-header">
               <h1 class="view-title">INTELLIGENCE FEED</h1>
-              <button class="refresh-btn" (click)="loadInsights()">REFRESH</button>
+              <button class="refresh-btn" [disabled]="insightsLoading()" (click)="loadInsights()">
+                {{ insightsLoading() ? 'LOADING' : 'REFRESH' }}
+              </button>
             </div>
-            <div class="insights-grid">
+            <div class="empty-view rich-empty-state" *ngIf="insightsLoading()">
+              <div class="empty-dot-grid loading"><span></span><span></span><span></span><span></span></div>
+              <span class="empty-title">RUNNING ANALYSIS</span>
+              <p class="empty-copy">Building a fresh intelligence feed from current task patterns.</p>
+            </div>
+            <div class="insights-grid" *ngIf="!insightsLoading() && insights().length > 0">
               <div
                 class="insight-card"
                 *ngFor="let ins of insights(); let i = index"
@@ -219,19 +244,38 @@ interface Task {
                 </div>
               </div>
             </div>
+            <div class="empty-view rich-empty-state" *ngIf="!insightsLoading() && insights().length === 0">
+              <div class="empty-dot-grid"><span></span><span></span><span></span><span class="active"></span></div>
+              <span class="empty-title">NO INSIGHTS YET</span>
+              <p class="empty-copy">No insights are ready. Try running analysis once more after tasks change.</p>
+              <span class="empty-hint">Tip: blockers and status changes improve signal quality.</span>
+            </div>
           </ng-container>
 
           <ng-container *ngIf="activeView() === 'standup'">
             <div class="view-header">
               <h1 class="view-title">DAILY STANDUP</h1>
-              <button class="refresh-btn" (click)="loadStandup()">GENERATE</button>
+              <button class="refresh-btn" [disabled]="standupLoading()" (click)="loadStandup()">
+                {{ standupLoading() ? 'GENERATING' : 'GENERATE' }}
+              </button>
             </div>
             <div class="standup-card" *ngIf="standup(); else noStandup">
               <div class="standup-content" [innerHTML]="standup()"></div>
             </div>
             <ng-template #noStandup>
-              <div class="empty-view">
-                <span class="empty-label">CLICK GENERATE TO PULL TODAY'S STANDUP</span>
+              <div class="empty-view rich-empty-state">
+                <div class="empty-terminal" [class.loading]="standupLoading()">
+                  <span></span>
+                  <span></span>
+                  <span class="long"></span>
+                </div>
+                <span class="empty-title">{{ standupLoading() ? 'GENERATING STANDUP' : 'NO STANDUP YET' }}</span>
+                <p class="empty-copy">
+                  {{ standupLoading()
+                    ? 'Summarizing recent work, in-progress items, and blockers.'
+                    : 'Generate a standup to turn recent task activity into a polished daily update.' }}
+                </p>
+                <span class="empty-hint">Hint: refresh after task updates for a more accurate summary.</span>
               </div>
             </ng-template>
           </ng-container>
@@ -245,7 +289,12 @@ interface Task {
                 <span>ID</span><span>TITLE</span><span>CATEGORY</span>
                 <span>ASSIGNEE</span><span>STATUS</span>
               </div>
-              <div class="table-row" *ngFor="let t of tasks(); let i = index" [style.animation-delay]="(i * 30) + 'ms'">
+              <div
+                class="table-row"
+                *ngFor="let t of tasks(); let i = index"
+                [class.selected]="selectedTaskId() === t.id"
+                [style.animation-delay]="(i * 30) + 'ms'"
+                (click)="selectTask(t.id)">
                 <span class="col-id">{{ t.id }}</span>
                 <span class="col-title">{{ t.title }}</span>
                 <span class="col-cat">{{ t.category }}</span>
@@ -337,8 +386,8 @@ interface Task {
     .nav {
       display: flex;
       flex-direction: column;
-      padding: 12px 8px;
-      gap: 2px;
+      padding: 14px 10px;
+      gap: 4px;
     }
     .nav-item {
       position: relative;
@@ -348,7 +397,7 @@ interface Task {
       padding: 9px 8px;
       border: none;
       background: transparent;
-      color: var(--text-muted);
+      color: rgba(232, 230, 224, 0.48);
       font-family: var(--font-mono);
       font-size: 10px;
       font-weight: 400;
@@ -357,15 +406,19 @@ interface Task {
       text-align: left;
       width: 100%;
       border-radius: var(--radius-sm);
-      transition: all var(--duration-fast) var(--ease-sharp);
+      transition: background-color 180ms var(--ease-sharp), color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp), transform 180ms var(--ease-sharp);
+      border: 1px solid transparent;
     }
     .nav-item:hover {
       color: var(--text-primary);
       background: var(--bg-hover);
+      border-color: var(--border-subtle);
+      transform: translateX(1px);
     }
     .nav-item.active {
       color: var(--amber);
-      background: var(--amber-dim);
+      background: linear-gradient(90deg, rgba(240, 165, 0, 0.16), rgba(240, 165, 0, 0.04));
+      border-color: var(--amber-border);
     }
     .nav-icon { flex-shrink: 0; display: flex; }
     .nav-label { flex: 1; }
@@ -521,20 +574,24 @@ interface Task {
     }
     .metric {
       flex: 1;
-      padding: 14px 24px;
+      padding: 18px 24px 16px;
       border-right: 1px solid var(--border);
       position: relative;
       overflow: hidden;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-      transition: background var(--duration-fast) ease;
+      transition: background-color 180ms var(--ease-sharp), box-shadow 180ms var(--ease-sharp);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent);
     }
     .metric:last-child { border-right: none; }
-    .metric:hover { background: var(--bg-surface); }
+    .metric:hover {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent), var(--bg-surface);
+      box-shadow: inset 0 -1px 0 rgba(240, 165, 0, 0.12);
+    }
     .metric-num {
       display: block;
       font-family: var(--font-mono);
-      font-size: 26px;
-      font-weight: 300;
+      font-size: 30px;
+      font-weight: 400;
       color: var(--text-primary);
       line-height: 1;
       animation: countUp 400ms var(--ease-sharp) both;
@@ -571,11 +628,12 @@ interface Task {
     }
 
     .panel {
-      background: var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
       border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
     }
     .panel-header {
       display: flex;
@@ -614,12 +672,17 @@ interface Task {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 16px;
+      padding: 13px 16px;
       border-bottom: 1px solid var(--border-subtle);
       animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
-      transition: background var(--duration-fast);
+      transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp);
+      cursor: pointer;
     }
-    .task-row:hover { background: var(--bg-hover); }
+    .task-row:hover { background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.08); }
+    .task-row.selected {
+      background: linear-gradient(90deg, rgba(240, 165, 0, 0.1), rgba(240, 165, 0, 0.03));
+      border-color: var(--amber-border);
+    }
     .task-row:last-child { border-bottom: none; }
     .task-left { display: flex; align-items: center; gap: 10px; overflow: hidden; }
     .task-status-bar {
@@ -638,8 +701,9 @@ interface Task {
     .task-info { overflow: hidden; }
     .task-title {
       display: block;
-      font-size: 12px;
-      font-weight: 400;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -647,7 +711,7 @@ interface Task {
     }
     .task-sub {
       font-size: 10px;
-      color: var(--text-muted);
+      color: rgba(138, 134, 128, 0.72);
       font-family: var(--font-mono);
     }
     .task-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
@@ -661,20 +725,25 @@ interface Task {
       font-family: var(--font-mono);
       font-size: 9px;
       letter-spacing: 0.06em;
-      padding: 2px 6px;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
+      padding: 4px 8px;
+      border: 1px solid var(--border-strong);
+      color: rgba(232, 230, 224, 0.72);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 999px;
     }
-    [data-status="In Progress"].task-status-tag { border-color: var(--amber-border); color: var(--amber); }
-    [data-status="Done"].task-status-tag { border-color: rgba(76, 175, 121, 0.3); color: var(--success); }
-    [data-status="Blocked"].task-status-tag { border-color: rgba(224, 82, 82, 0.3); color: var(--danger); }
+    [data-status="In Progress"].task-status-tag { border-color: var(--amber-border); color: var(--amber); background: rgba(240, 165, 0, 0.12); }
+    [data-status="Done"].task-status-tag { border-color: rgba(76, 175, 121, 0.34); color: var(--success); background: rgba(76, 175, 121, 0.12); }
+    [data-status="Blocked"].task-status-tag { border-color: rgba(224, 82, 82, 0.34); color: var(--danger); background: rgba(224, 82, 82, 0.12); }
     .task-empty {
-      padding: 32px 16px;
+      padding: 36px 16px;
       text-align: center;
       font-family: var(--font-mono);
       font-size: 10px;
       color: var(--text-muted);
       letter-spacing: 0.1em;
+      display: grid;
+      gap: 10px;
+      justify-items: center;
     }
 
     .signal-list { padding: 8px 0; overflow-y: auto; flex: 1; }
@@ -696,14 +765,9 @@ interface Task {
     [data-severity="info"] .signal-bar { background: var(--info); }
     [data-severity="warning"] .signal-bar { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
     [data-severity="critical"] .signal-bar { background: var(--danger); box-shadow: 0 0 6px rgba(224, 82, 82, 0.4); }
-    .signal-msg { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+    .signal-msg { font-size: 12px; line-height: 1.5; color: rgba(232, 230, 224, 0.74); }
     .signal-empty {
-      padding: 32px 16px;
-      text-align: center;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--text-muted);
-      letter-spacing: 0.1em;
+      padding: 24px 16px;
     }
 
     .view-header {
@@ -717,7 +781,7 @@ interface Task {
     }
     .view-title {
       font-family: var(--font-display);
-      font-size: 32px;
+      font-size: 36px;
       letter-spacing: 0.05em;
       color: var(--text-primary);
     }
@@ -730,9 +794,11 @@ interface Task {
       background: var(--amber-dim);
       color: var(--amber);
       cursor: pointer;
-      transition: all var(--duration-fast);
+      transition: transform 160ms var(--ease-sharp), background-color 160ms var(--ease-sharp), color 160ms var(--ease-sharp), opacity 160ms var(--ease-sharp);
     }
-    .refresh-btn:hover { background: var(--amber); color: #000; }
+    .refresh-btn:hover { background: var(--amber); color: #000; transform: translateY(-1px); }
+    .refresh-btn:active { transform: translateY(0); }
+    .refresh-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .insights-grid {
       display: grid;
@@ -740,13 +806,14 @@ interface Task {
       gap: 12px;
     }
     .insight-card {
-      background: var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
       border: 1px solid var(--border);
-      padding: 16px;
+      padding: 18px;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-      transition: border-color var(--duration-fast), background var(--duration-fast);
+      transition: border-color 180ms var(--ease-sharp), background-color 180ms var(--ease-sharp), box-shadow 180ms var(--ease-sharp);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
     }
-    .insight-card:hover { background: var(--bg-elevated); }
+    .insight-card:hover { background: var(--bg-elevated); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18); }
     [data-severity="critical"].insight-card { border-left: 2px solid var(--danger); }
     [data-severity="warning"].insight-card { border-left: 2px solid var(--amber); }
     [data-severity="info"].insight-card { border-left: 2px solid var(--info); }
@@ -789,13 +856,14 @@ interface Task {
     .metric-baseline { color: var(--text-muted); }
 
     .standup-card {
-      background: var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
       border: 1px solid var(--border);
       padding: 28px 32px;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
       max-width: 720px;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
     }
-    .standup-content { font-size: 13px; line-height: 1.8; color: var(--text-secondary); }
+    .standup-content { font-size: 13px; line-height: 1.8; color: rgba(232, 230, 224, 0.82); }
     .standup-content h2 {
       font-family: var(--font-display);
       font-size: 18px;
@@ -808,8 +876,9 @@ interface Task {
     .standup-content li { margin: 4px 0; }
 
     .task-table {
-      background: var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
       border: 1px solid var(--border);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
     }
     .table-head {
       display: grid;
@@ -824,33 +893,116 @@ interface Task {
     .table-row {
       display: grid;
       grid-template-columns: 100px 1fr 140px 140px 120px;
-      padding: 10px 16px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border-subtle);
       font-size: 12px;
       animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
-      transition: background var(--duration-fast);
+      transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp);
+      cursor: pointer;
     }
-    .table-row:hover { background: var(--bg-hover); }
+    .table-row:hover { background: rgba(255, 255, 255, 0.03); }
+    .table-row.selected {
+      background: linear-gradient(90deg, rgba(240, 165, 0, 0.1), rgba(240, 165, 0, 0.03));
+      border-color: var(--amber-border);
+    }
     .table-row:last-child { border-bottom: none; }
     .col-id { font-family: var(--font-mono); font-size: 10px; color: var(--amber); }
-    .col-cat, .col-assignee { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); }
-    .col-status { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; }
-    [data-status="In Progress"].col-status { color: var(--amber); }
-    [data-status="Done"].col-status { color: var(--success); }
-    [data-status="Blocked"].col-status { color: var(--danger); }
+    .col-title { color: var(--text-primary); font-weight: 500; }
+    .col-cat, .col-assignee { font-size: 11px; color: rgba(138, 134, 128, 0.78); font-family: var(--font-mono); }
+    .col-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding: 4px 8px;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      width: fit-content;
+      color: rgba(232, 230, 224, 0.72);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    [data-status="In Progress"].col-status { color: var(--amber); border-color: var(--amber-border); background: rgba(240, 165, 0, 0.12); }
+    [data-status="Done"].col-status { color: var(--success); border-color: rgba(76, 175, 121, 0.34); background: rgba(76, 175, 121, 0.12); }
+    [data-status="Blocked"].col-status { color: var(--danger); border-color: rgba(224, 82, 82, 0.34); background: rgba(224, 82, 82, 0.12); }
 
     .empty-view {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: grid;
+      align-content: center;
+      justify-items: center;
       height: 200px;
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.12em;
       color: var(--text-muted);
       border: 1px solid var(--border);
       text-align: center;
       padding: 24px;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
+    }
+    .rich-empty-state { min-height: 220px; }
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+    }
+    .empty-copy {
+      max-width: 420px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(138, 134, 128, 0.78);
+    }
+    .empty-hint {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--amber);
+    }
+    .empty-dot-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 12px);
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .empty-dot-grid span {
+      width: 12px;
+      height: 12px;
+      border: 1px solid var(--border-strong);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .empty-dot-grid .active {
+      border-color: var(--amber-border);
+      background: rgba(240, 165, 0, 0.16);
+    }
+    .empty-dot-grid.loading span {
+      animation: fadeIn 650ms var(--ease-sharp) infinite alternate;
+    }
+    .empty-dot-grid.loading span:nth-child(2) { animation-delay: 80ms; }
+    .empty-dot-grid.loading span:nth-child(3) { animation-delay: 160ms; }
+    .empty-dot-grid.loading span:nth-child(4) { animation-delay: 240ms; }
+    .empty-terminal {
+      display: grid;
+      gap: 6px;
+      width: 88px;
+      margin-bottom: 6px;
+    }
+    .empty-terminal span {
+      height: 2px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+    .empty-terminal .long {
+      width: 100%;
+      background: rgba(240, 165, 0, 0.24);
+    }
+    .empty-terminal.loading span {
+      background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(240,165,0,0.3), rgba(255,255,255,0.06));
+      background-size: 200% 100%;
+      animation: shimmer 1.2s linear infinite;
+    }
+    .loading-spinner {
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--border-strong);
+      border-top-color: var(--amber);
+      border-radius: 50%;
+      animation: spin 900ms linear infinite;
     }
 
     @media (max-width: 1100px) {
@@ -939,6 +1091,10 @@ export class AppComponent implements OnInit, AfterViewInit {
   activeView = signal<string>('dashboard');
   backendOnline = signal(false);
   loaded = signal(false);
+  selectedTaskId = signal<string | null>(null);
+  tasksLoading = signal(true);
+  insightsLoading = signal(false);
+  standupLoading = signal(false);
   tasks = signal<Task[]>([]);
   insights = signal<Insight[]>([]);
   standup = signal<string | null>(null);
@@ -986,6 +1142,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   loadTasks() {
+    this.tasksLoading.set(true);
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
       next: (res) => {
         this.insights.set(res.insights ?? []);
@@ -1004,7 +1161,12 @@ export class AppComponent implements OnInit, AfterViewInit {
           { id: 'task-0041', title: 'Database migration — schema v3', status: 'Blocked', category: 'Work → Infra', assignee: { name: 'Bob' } },
           { id: 'task-0019', title: 'Write unit tests for auth module', status: 'To Do', category: 'Work → Engineering', assignee: { name: 'Alex' } }
         ]);
+        this.selectedTaskId.set(this.tasks()[0]?.id ?? null);
         this.updateMetrics();
+        this.tasksLoading.set(false);
+      },
+      error: () => {
+        this.tasksLoading.set(false);
       }
     });
   }
@@ -1024,24 +1186,39 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   loadInsights() {
+    this.insightsLoading.set(true);
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
       next: (res) => {
         this.insights.set(res.insights ?? []);
         this.backendOnline.set(true);
+        this.insightsLoading.set(false);
       },
-      error: () => {}
+      error: () => {
+        this.insightsLoading.set(false);
+      }
     });
   }
 
   loadStandup() {
     this.standup.set(null);
+    this.standupLoading.set(true);
     this.http.get<{ markdown: string }>('/reports/standup').subscribe({
-      next: (res) => this.standup.set(this.mdToHtml(res.markdown))
+      next: (res) => {
+        this.standup.set(this.mdToHtml(res.markdown));
+        this.standupLoading.set(false);
+      },
+      error: () => {
+        this.standupLoading.set(false);
+      }
     });
   }
 
   setView(view: string) {
     this.activeView.set(view);
+  }
+
+  selectTask(taskId: string) {
+    this.selectedTaskId.set(taskId);
   }
 
   switchRole(role: string) {
