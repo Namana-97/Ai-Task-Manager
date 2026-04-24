@@ -13,7 +13,10 @@ export interface TaskDocument {
   description?: string | null;
   category?: string | null;
   status?: string | null;
+  priority?: string | null;
   createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+  dueDate?: string | Date | null;
   assigneeName?: string | null;
   assigneeId?: string | null;
   assigneeRole?: string | null;

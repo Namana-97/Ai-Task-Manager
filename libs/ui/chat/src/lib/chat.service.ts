@@ -17,9 +17,9 @@ export class ChatService {
   private readonly apiBase = inject(CHAT_API_BASE_URL);
   private readonly contextWindow = signal<ChatMessage[]>([]);
 
-  sendMessage(message: string): Observable<ChatChunk> {
+  sendMessage(message: string, pendingIntent?: unknown): Observable<ChatChunk> {
     const subject = new Subject<ChatChunk>();
-    void this.dispatchMessage(message, subject);
+    void this.dispatchMessage(message, subject, pendingIntent as IntentResponse | undefined);
     return subject.asObservable();
   }
 
@@ -37,10 +37,29 @@ export class ChatService {
     this.contextWindow.update((current) => [...current, message].slice(-10));
   }
 
-  private async dispatchMessage(message: string, subject: Subject<ChatChunk>): Promise<void> {
+  private async dispatchMessage(
+    message: string,
+    subject: Subject<ChatChunk>,
+    pendingIntent?: IntentResponse
+  ): Promise<void> {
     try {
+      if (pendingIntent) {
+        await this.executeIntent(pendingIntent, subject);
+        return;
+      }
+
       const intent = await this.classifyIntent(message);
       if (intent && intent.type !== 'query' && intent.type !== 'unknown') {
+        if (intent.requiresConfirmation) {
+          subject.next({
+            type: 'confirmation',
+            confirmationMessage: buildConfirmationMessage(intent),
+            pendingIntent: intent
+          });
+          subject.next({ type: 'done' });
+          subject.complete();
+          return;
+        }
         await this.executeIntent(intent, subject);
         return;
       }
@@ -199,7 +218,20 @@ function emitEvents(
         type: 'chunk' | 'sources';
         content?: string;
         sources?: ChatChunk['sources'];
+        requiresConfirmation?: boolean;
+        confirmationMessage?: string;
+        pendingIntent?: unknown;
       };
+      if (payload.requiresConfirmation && payload.confirmationMessage) {
+        subscriber.next({
+          type: 'confirmation',
+          confirmationMessage: payload.confirmationMessage,
+          pendingIntent: payload.pendingIntent ?? null
+        });
+        subscriber.next({ type: 'done' });
+        subscriber.complete();
+        continue;
+      }
       subscriber.next(payload);
     } catch {
       continue;
@@ -234,6 +266,15 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
   } catch {
     return defaultMessage;
   }
+}
+
+function buildConfirmationMessage(intent: IntentResponse): string {
+  const label =
+    (typeof intent.parameters?.['title'] === 'string' && intent.parameters['title']) ||
+    (typeof intent.parameters?.['taskId'] === 'string' && intent.parameters['taskId']) ||
+    'this task';
+
+  return `Confirm: ${intent.type.replace(/_/g, ' ')} "${label}"?`;
 }
 
 function normalizeErrorMessage(status: number, message: string | undefined, fallback: string): string {

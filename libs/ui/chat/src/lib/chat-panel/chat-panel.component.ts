@@ -1,8 +1,11 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Output, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
 import { finalize } from 'rxjs';
 import { ChatService } from '../chat.service';
-import { ChatChunk, ChatMessage } from '../models';
+import { ChatChunk, ChatMessage, SourceReference } from '../models';
 
 @Component({
   selector: 'task-chat-panel',
@@ -34,52 +37,77 @@ import { ChatChunk, ChatMessage } from '../models';
           </button>
         </div>
 
-        <div class="message-block" *ngFor="let message of messages()">
+        <ng-container *ngFor="let message of messages(); let i = index">
+          <div class="assistant-label" *ngIf="shouldShowHistoryDivider(i)">EARLIER</div>
+
+          <div class="message-block">
           <div class="message-user" *ngIf="message.role === 'user'">
             <div class="bubble">{{ message.content }}</div>
           </div>
 
           <div class="message-assistant" *ngIf="message.role === 'assistant'">
             <div class="bubble">
-              <div class="assistant-label">ASSISTANT</div>
-              <div class="assistant-content">
+              <div class="assistant-topline">
+                <div class="assistant-label">ASSISTANT</div>
+                <div class="message-meta">
+                  <span *ngIf="message.isHistorical">HISTORY</span>
+                  <span>{{ formatTime(message.createdAt) }}</span>
+                </div>
+              </div>
+              <div class="assistant-content prose">
                 <ng-container *ngIf="message.content; else typingState">
-                  {{ message.content }}
+                  <div [innerHTML]="renderAssistantContent(message)"></div>
                   <span class="cursor" *ngIf="message.streaming"></span>
                 </ng-container>
                 <ng-template #typingState>
-                  <span class="typing-indicator" *ngIf="message.streaming">
-                    <span></span><span></span><span></span>
-                  </span>
+                  <div class="typing-shell" *ngIf="message.streaming">
+                    <span class="typing-indicator"><span></span><span></span><span></span></span>
+                    <span class="typing-copy">Retrieving task context and composing response…</span>
+                  </div>
                 </ng-template>
               </div>
             </div>
 
-            <div class="sources-row" *ngIf="message.sources?.length">
-              <button
-                type="button"
-                class="source-card"
-                *ngFor="let source of message.sources"
-                (click)="taskSelected.emit(source.taskId)">
-                <span class="source-id">{{ source.taskId }}</span>
-                <span class="source-title">{{ source.title }}</span>
-                <span class="source-sim">{{ formatSimilarity(source.similarity) }}</span>
-              </button>
+            <div class="sources-block" *ngIf="message.sources?.length">
+              <div class="sources-label">REFERENCES</div>
+              <div class="sources-row">
+                <button
+                  type="button"
+                  class="source-card"
+                  *ngFor="let source of message.sources"
+                  (click)="onTaskSelected(source.taskId)">
+                  <span class="source-id">{{ source.taskId }}</span>
+                  <span class="source-title">{{ source.title }}</span>
+                  <span class="source-sim">{{ formatSimilarity(source.similarity) }}</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+          </div>
+        </ng-container>
       </section>
+
+      <div class="message-assistant" *ngIf="pendingConfirmation()">
+        <div class="bubble">
+          <div class="assistant-label">CONFIRM ACTION</div>
+          <div class="assistant-content">{{ pendingConfirmation()!.message }}</div>
+        </div>
+        <div class="chat-header-actions">
+          <button class="header-btn" type="button" (click)="confirmAction()">CONFIRM</button>
+          <button class="header-btn" type="button" (click)="cancelAction()">CANCEL</button>
+        </div>
+      </div>
 
       <div class="chat-input-area">
         <textarea
           class="chat-textarea"
           rows="1"
-          [disabled]="streaming()"
+          [disabled]="streaming() || !!pendingConfirmation()"
           [value]="draft()"
           (input)="draft.set(extractValue($event))"
           (keydown.enter)="handleEnter($event)"
           placeholder="Ask about tasks, blockers, trends, or status..."></textarea>
-        <button class="send-btn" type="button" [disabled]="streaming() || !draft().trim()" (click)="submitDraft()">
+        <button class="send-btn" type="button" [disabled]="streaming() || !!pendingConfirmation() || !draft().trim()" (click)="submitDraft()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <path d="M4 12h12M12 4l8 8-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
           </svg>
@@ -184,10 +212,17 @@ import { ChatChunk, ChatMessage } from '../models';
     .message-assistant .bubble {
       background: rgba(255, 255, 255, 0.015);
       border: 1px solid var(--border-subtle);
-      padding: 10px 12px;
+      padding: 12px 14px;
       align-self: flex-start;
       width: 100%;
       animation: fadeSlideUp 180ms var(--ease-sharp) both;
+    }
+    .assistant-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
     }
     .assistant-label {
       font-family: var(--font-mono);
@@ -203,17 +238,105 @@ import { ChatChunk, ChatMessage } from '../models';
       background: var(--amber);
       opacity: 0.5;
     }
+    .message-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
     .assistant-content {
       font-size: 13px;
       line-height: 1.7;
       color: rgba(232, 230, 224, 0.78);
-      white-space: pre-wrap;
+    }
+    .prose {
+      color: rgba(232, 230, 224, 0.86);
+    }
+    .prose :first-child { margin-top: 0; }
+    .prose :last-child { margin-bottom: 0; }
+    .prose p {
+      margin: 0 0 10px;
+    }
+    .prose h2,
+    .prose h3 {
+      margin: 14px 0 8px;
+      font-family: var(--font-display);
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .prose h2 {
+      font-size: 20px;
+    }
+    .prose h3 {
+      font-size: 16px;
+    }
+    .prose ul,
+    .prose ol {
+      margin: 0 0 12px 18px;
+      padding: 0;
+    }
+    .prose li {
+      margin-bottom: 6px;
+    }
+    .prose strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .prose code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--amber);
+      background: rgba(240, 165, 0, 0.08);
+      border: 1px solid rgba(240, 165, 0, 0.12);
+      padding: 1px 4px;
+    }
+    .prose pre {
+      overflow-x: auto;
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+    }
+    .prose pre code {
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+    }
+    .prose blockquote {
+      margin: 0 0 12px;
+      padding-left: 10px;
+      border-left: 1px solid var(--amber-border);
+      color: var(--text-secondary);
+    }
+    .prose a {
+      color: var(--amber);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(240, 165, 0, 0.25);
+    }
+    .typing-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-secondary);
     }
     .typing-indicator {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       height: 16px;
+    }
+    .typing-copy {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
     }
     .typing-indicator span {
       width: 5px;
@@ -233,20 +356,31 @@ import { ChatChunk, ChatMessage } from '../models';
       animation: blink 0.9s step-end infinite;
     }
 
+    .sources-block {
+      margin-top: 10px;
+    }
+    .sources-label {
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
     .sources-row {
       display: flex; gap: 6px;
-      overflow-x: auto; padding: 8px 0 2px;
+      overflow-x: auto; padding: 0 0 2px;
       scrollbar-width: none;
     }
     .source-card {
       flex-shrink: 0;
       border: 1px solid var(--border);
       background: var(--bg-elevated);
-      padding: 7px 10px;
+      padding: 10px 12px;
       cursor: pointer;
       transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp), transform 180ms var(--ease-sharp);
       animation: fadeIn 200ms var(--ease-sharp) both;
       text-align: left;
+      min-width: 168px;
     }
     .source-card:hover {
       border-color: var(--amber-border);
@@ -366,11 +500,17 @@ import { ChatChunk, ChatMessage } from '../models';
 })
 export class ChatPanelComponent {
   private readonly chatService = inject(ChatService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly open = signal(false);
   readonly streaming = signal(false);
   readonly messages = signal<ChatMessage[]>([]);
   readonly draft = signal('');
+  readonly pendingConfirmation = signal<{ message: string; intent: unknown } | null>(null);
+  readonly showHistoryDivider = computed(() => {
+    const messages = this.messages();
+    return messages.length > 0 && messages.some((message) => message.isHistorical) && messages.some((message) => !message.isHistorical);
+  });
   readonly prompts = [
     'What did I finish last week?',
     'What tasks are overdue?',
@@ -381,22 +521,30 @@ export class ChatPanelComponent {
   @Output() taskSelected = new EventEmitter<string>();
 
   toggle(): void {
-    this.open.update((current) => !current);
+    if (this.open()) {
+      this.open.set(false);
+      return;
+    }
+
+    this.openPanel();
+  }
+
+  openPanel(): void {
+    this.open.set(true);
+    if (this.messages().length === 0) {
+      this.loadHistory();
+    }
   }
 
   clear(): void {
     this.messages.set([]);
+    this.pendingConfirmation.set(null);
     this.chatService.clearConversation();
   }
 
-  send(message: string): void {
-    this.open.set(true);
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: message,
-      createdAt: new Date().toISOString()
-    };
+  send(message: string, pendingIntent?: unknown): void {
+    this.openPanel();
+    const isConfirmation = message === '__CONFIRM__' && !!pendingIntent;
     const assistantMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -405,13 +553,25 @@ export class ChatPanelComponent {
       streaming: true
     };
 
-    this.messages.update((current) => [...current, userMessage, assistantMessage]);
-    this.chatService.pushContext(userMessage);
+    if (isConfirmation) {
+      this.messages.update((current) => [...current, assistantMessage]);
+    } else {
+      const userMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: message,
+        createdAt: new Date().toISOString()
+      };
+      this.messages.update((current) => [...current, userMessage, assistantMessage]);
+      this.chatService.pushContext(userMessage);
+    }
+
+    this.pendingConfirmation.set(null);
     this.streaming.set(true);
     this.draft.set('');
 
     this.chatService
-      .sendMessage(message)
+      .sendMessage(message, pendingIntent)
       .pipe(finalize(() => this.streaming.set(false)))
       .subscribe({
         next: (chunk) => this.applyChunk(assistantMessage.id, chunk),
@@ -443,7 +603,91 @@ export class ChatPanelComponent {
     return `${Math.round(similarity * 100)}% match`;
   }
 
+  formatTime(value: string): string {
+    return new Date(value).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  }
+
+  renderAssistantContent(message: ChatMessage): SafeHtml {
+    const rendered = marked.parse(this.formatAssistantMarkdown(message), {
+      async: false,
+      breaks: true
+    });
+    return this.sanitizer.bypassSecurityTrustHtml(DOMPurify.sanitize(String(rendered)));
+  }
+
+  onTaskSelected(taskId: string): void {
+    this.taskSelected.emit(taskId);
+  }
+
+  confirmAction(): void {
+    const pending = this.pendingConfirmation();
+    if (!pending) {
+      return;
+    }
+
+    this.pendingConfirmation.set(null);
+    this.send('__CONFIRM__', pending.intent);
+  }
+
+  cancelAction(): void {
+    this.pendingConfirmation.set(null);
+    this.messages.update((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Action cancelled.',
+        createdAt: new Date().toISOString()
+      }
+    ]);
+  }
+
+  shouldShowHistoryDivider(index: number): boolean {
+    if (!this.showHistoryDivider()) {
+      return false;
+    }
+
+    const current = this.messages()[index];
+    const previous = this.messages()[index - 1];
+    return Boolean(current && !current.isHistorical && previous?.isHistorical);
+  }
+
+  private loadHistory(): void {
+    this.chatService.getHistory().subscribe({
+      next: (page) => {
+        if (!page?.messages?.length) {
+          return;
+        }
+
+        const historical = [...page.messages].reverse().map((message) => ({
+          ...message,
+          isHistorical: true
+        }));
+        this.messages.set(historical);
+        this.chatService.clearConversation();
+        for (const message of historical) {
+          this.chatService.pushContext(message);
+        }
+      },
+      error: () => {}
+    });
+  }
+
   private applyChunk(messageId: string, chunk: ChatChunk): void {
+    if (chunk.type === 'confirmation') {
+      this.pendingConfirmation.set({
+        message: chunk.confirmationMessage ?? 'Confirm this action?',
+        intent: chunk.pendingIntent ?? null
+      });
+      this.streaming.set(false);
+      this.messages.update((current) => current.filter((entry) => entry.id !== messageId));
+      return;
+    }
+
     this.messages.update((current) =>
       current.map((entry) => {
         if (entry.id !== messageId) {
@@ -468,7 +712,7 @@ export class ChatPanelComponent {
 
     if (chunk.type === 'done') {
       const completed = this.messages().find((entry) => entry.id === messageId);
-      if (completed) {
+      if (completed?.content) {
         this.chatService.pushContext(completed);
       }
     }
@@ -486,5 +730,86 @@ export class ChatPanelComponent {
           : entry
       )
     );
+  }
+
+  private decorateTaskIds(content: string): string {
+    return content.replace(/\[(task-\d+)\]/gi, '`[$1]`');
+  }
+
+  private formatAssistantMarkdown(message: ChatMessage): string {
+    const content = message.content.trim();
+    if (!content) {
+      return '';
+    }
+
+    const normalized = this.decorateTaskIds(content);
+    if (this.isPrestructuredResponse(normalized)) {
+      return normalized;
+    }
+
+    if (this.isStatusStyleMessage(normalized)) {
+      return `## Status\n\n${normalized}`;
+    }
+
+    const summary = this.extractSummary(normalized);
+    const details = this.extractDetails(normalized, summary);
+    const sections = [`## Summary\n\n${summary}`];
+
+    if (details) {
+      sections.push(`## Details\n\n${details}`);
+    }
+
+    const sourceOverview = this.buildSourceOverview(message.sources ?? []);
+    if (sourceOverview) {
+      sections.push(`## Key Tasks\n\n${sourceOverview}`);
+    }
+
+    return sections.join('\n\n');
+  }
+
+  private isPrestructuredResponse(content: string): boolean {
+    return /(^|\n)(#{1,6}\s|[-*]\s|\d+\.\s)/m.test(content);
+  }
+
+  private isStatusStyleMessage(content: string): boolean {
+    return /^(action cancelled\.|task action completed\.|created|updated|deleted|removed|generated)/i.test(
+      content
+    );
+  }
+
+  private extractSummary(content: string): string {
+    const sentences = this.splitSentences(content);
+    if (sentences.length <= 2) {
+      return content;
+    }
+
+    return sentences.slice(0, 2).join(' ');
+  }
+
+  private extractDetails(content: string, summary: string): string {
+    if (content === summary) {
+      return '';
+    }
+
+    const remainder = content.slice(summary.length).trim();
+    return remainder.replace(/^\s+/, '');
+  }
+
+  private buildSourceOverview(sources: SourceReference[]): string {
+    if (!sources.length) {
+      return '';
+    }
+
+    return sources
+      .slice(0, 4)
+      .map((source) => `- \`${source.taskId}\` ${source.title}`)
+      .join('\n');
+  }
+
+  private splitSentences(content: string): string[] {
+    return content
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean);
   }
 }

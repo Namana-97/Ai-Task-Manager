@@ -26,7 +26,14 @@ export function buildTaskDocument(task: TaskDocument): string {
   pushLine('Description', task.description);
   pushLine('Category', task.category);
   pushLine('Status', task.status);
+  pushLine('Priority', task.priority);
   pushLine('Created', task.createdAt);
+  pushLine('Updated', task.updatedAt);
+  pushLine('Due', task.dueDate);
+
+  if (task.status?.toLowerCase() === 'done') {
+    pushLine('Completed', task.updatedAt);
+  }
 
   if (task.assigneeName) {
     const roleSuffix = task.assigneeRole ? `${task.assigneeRole}` : 'unknown-role';

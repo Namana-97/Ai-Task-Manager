@@ -18,7 +18,11 @@ export class ReportsService {
   ) {}
 
   async generateStandup(user: AuthenticatedUser, scope: 'personal' | 'team' = 'personal') {
-    const tasks = await this.repository.findUpdatedSince(user.id, user.orgId, new Date(Date.now() - 24 * 60 * 60 * 1000));
+    const tasks = await this.repository.findUpdatedSince(
+      user.id,
+      user.orgId,
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    );
     const filtered =
       scope === 'personal' ? tasks.filter((task) => task.assignee.id === user.id) : tasks;
     const grouped = groupStandupTasks(filtered);

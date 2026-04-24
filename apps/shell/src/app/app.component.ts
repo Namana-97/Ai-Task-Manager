@@ -292,6 +292,7 @@ interface Task {
               <div
                 class="table-row"
                 *ngFor="let t of tasks(); let i = index"
+                [attr.data-task-id]="t.id"
                 [class.selected]="selectedTaskId() === t.id"
                 [style.animation-delay]="(i * 30) + 'ms'"
                 (click)="selectTask(t.id)">
@@ -1229,7 +1230,16 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   onTaskSelected(taskId: string) {
-    console.log('Task selected:', taskId);
+    this.selectedTaskId.set(taskId);
+    this.setView('tasks');
+    setTimeout(() => {
+      const element = document.querySelector(`[data-task-id="${taskId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('highlighted');
+        setTimeout(() => element.classList.remove('highlighted'), 2000);
+      }
+    }, 100);
   }
 
   private mdToHtml(md: string): string {

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { FunctionDeclaration, SchemaType } from '@google/generative-ai';
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { z } from 'zod';
 import { OutputValidator } from '@ai-task-manager/ai/guardrails';
 import { GeminiKeyPool, PromptLoader } from '@ai-task-manager/ai/rag';
@@ -30,10 +31,18 @@ const intentSchema = z.object({
 export class AnthropicIntentClassifier {
   private readonly provider = process.env.LLM_PROVIDER ?? 'gemini';
   private readonly model = this.resolveModel(
-    process.env.LLM_MODEL ?? (this.provider === 'gemini' ? 'gemini-2.5-flash' : 'claude-sonnet-4-20250514')
+    process.env.LLM_MODEL ??
+      (this.provider === 'gemini'
+        ? 'gemini-2.5-flash'
+        : this.provider === 'openai'
+          ? 'gpt-4o-mini'
+          : 'claude-sonnet-4-20250514')
   );
   private readonly anthropic = process.env.LLM_API_KEY
     ? new Anthropic({ apiKey: process.env.LLM_API_KEY })
+    : null;
+  private readonly openai = process.env.LLM_API_KEY
+    ? new OpenAI({ apiKey: process.env.LLM_API_KEY })
     : null;
 
   constructor(
@@ -48,6 +57,14 @@ export class AnthropicIntentClassifier {
   async classify(message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<ClassifiedIntent> {
     if (this.provider === 'gemini') {
       return this.classifyWithGemini(message, conversationHistory);
+    }
+
+    if (this.provider === 'openai') {
+      return this.classifyWithOpenAi(message, conversationHistory);
+    }
+
+    if (this.provider !== 'anthropic') {
+      return this.heuristicFallback(message);
     }
 
     if (!this.anthropic) {
@@ -170,7 +187,11 @@ Consider conversation history when resolving references like "that task" or "the
             },
             assignee: { type: SchemaType.STRING, description: 'Name or user ID' },
             dueDate: { type: SchemaType.STRING, description: 'ISO 8601 date' },
-            tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+            tags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            recurrence: {
+              type: SchemaType.STRING,
+              description: 'Optional recurrence rule such as weekly/friday/15:00'
+            }
           },
           required: ['title']
         }
@@ -254,6 +275,123 @@ Consider conversation history when resolving references like "that task" or "the
       requiresConfirmation:
         toolName === 'delete_task' ||
         (toolName === 'update_task' &&
+          (Boolean(parameters?.assignee) || Boolean(parameters?.status)))
+    });
+  }
+
+  private async classifyWithOpenAi(
+    message: string,
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+  ): Promise<ClassifiedIntent> {
+    if (!this.openai) {
+      return this.heuristicFallback(message);
+    }
+
+    const systemPrompt = `${this.promptLoader.load('intent-classifier.txt')}
+
+Use the provided tools when the user wants to create, update, delete, or report on tasks.
+For questions about tasks, do not call a tool and classify the request as a query.
+Consider conversation history when resolving references like "that task" or "the login bug".`;
+
+    const response = await this.openai.chat.completions.create({
+      model: this.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory.map((entry) => ({ role: entry.role, content: entry.content })),
+        { role: 'user', content: message }
+      ],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'create_task',
+            description: 'Create a new task when the user asks to add, create, or set up a task.',
+            parameters: {
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'Short task title' },
+                description: { type: 'string', description: 'Task description' },
+                category: { type: 'string', description: 'Category such as Work or Engineering' },
+                priority: { type: 'string', enum: ['Critical', 'High', 'Medium', 'Low'] },
+                assignee: { type: 'string', description: 'Name or user ID' },
+                dueDate: { type: 'string', description: 'ISO 8601 date' },
+                tags: { type: 'array', items: { type: 'string' } },
+                recurrence: {
+                  type: 'string',
+                  description: 'Optional recurrence rule such as weekly/friday/15:00'
+                }
+              },
+              required: ['title']
+            }
+          }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'update_task',
+            description: 'Update an existing task when the user asks to change, modify, or edit it.',
+            parameters: {
+              type: 'object',
+              properties: {
+                taskId: { type: 'string', description: 'The task ID to update' },
+                fields: { type: 'object', description: 'Fields to update' }
+              },
+              required: ['taskId', 'fields']
+            }
+          }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'delete_task',
+            description: 'Delete a task only when the user explicitly wants to delete it.',
+            parameters: {
+              type: 'object',
+              properties: {
+                taskId: { type: 'string', description: 'The task ID to delete' }
+              },
+              required: ['taskId']
+            }
+          }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'status_report',
+            description: 'Generate a standup or status report when the user asks for a report.',
+            parameters: {
+              type: 'object',
+              properties: {
+                scope: { type: 'string', description: 'The report scope' },
+                timeRange: { type: 'string', description: 'The report time range' }
+              },
+              required: ['scope', 'timeRange']
+            }
+          }
+        }
+      ]
+    });
+
+    const toolCall = response.choices[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.type !== 'function') {
+      return {
+        type: 'query',
+        confidence: 0.9,
+        requiresConfirmation: false
+      };
+    }
+
+    const rawArgs = toolCall.function.arguments?.trim();
+    const parsedArgs =
+      rawArgs && rawArgs.length > 0 ? (JSON.parse(rawArgs) as Record<string, unknown>) : {};
+    const parameters = this.extractParameters(toolCall.function.name, parsedArgs);
+    return this.outputValidator.validate(intentSchema, {
+      type: toolCall.function.name,
+      confidence: 0.92,
+      parameters,
+      requiresConfirmation:
+        toolCall.function.name === 'delete_task' ||
+        (toolCall.function.name === 'update_task' &&
           (Boolean(parameters?.assignee) || Boolean(parameters?.status)))
     });
   }

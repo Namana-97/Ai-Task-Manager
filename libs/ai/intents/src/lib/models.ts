@@ -18,6 +18,8 @@ export interface TaskMutationParams {
   assignee?: string;
   status?: string;
   dueDate?: string;
+  scope?: 'personal' | 'team';
+  timeRange?: string;
   tags?: string[];
   recurrence?: string;
   suggestedCategory?: string;

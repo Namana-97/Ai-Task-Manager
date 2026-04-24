@@ -28,10 +28,7 @@ export class EmbeddingClient {
     const embeddings: number[][] = [];
     for (const batch of batches) {
       const start = performance.now();
-      const batchEmbeddings =
-        this.provider === 'local'
-          ? await this.embedLocal(batch)
-          : await this.embedWithRetry(batch);
+      const batchEmbeddings = await this.embedBatch(batch);
       const latencyMs = Math.round(performance.now() - start);
       this.logger.log(`Embedded batch of ${batch.length} texts in ${latencyMs}ms`);
       embeddings.push(...batchEmbeddings);
@@ -68,6 +65,39 @@ export class EmbeddingClient {
       await new Promise((resolve) => setTimeout(resolve, baseDelay + jitter));
       return this.embedWithRetry(batch, attempt + 1);
     }
+  }
+
+  private async embedBatch(batch: string[]): Promise<number[][]> {
+    if (this.provider === 'gemini') {
+      return this.embedWithGemini(batch);
+    }
+
+    if (this.provider === 'openai') {
+      return this.embedWithRetry(batch);
+    }
+
+    return this.embedLocal(batch);
+  }
+
+  private async embedWithGemini(texts: string[]): Promise<number[][]> {
+    const apiKey = process.env.EMBEDDING_API_KEY ?? process.env.LLM_API_KEY ?? '';
+    if (!apiKey) {
+      this.logger.warn('EMBEDDING_API_KEY missing, falling back to local MiniLM embeddings');
+      return this.embedLocal(texts);
+    }
+
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: process.env.EMBEDDING_MODEL ?? 'text-embedding-004'
+    });
+
+    const results: number[][] = [];
+    for (const text of texts) {
+      const result = await model.embedContent(text);
+      results.push(result.embedding.values);
+    }
+    return results;
   }
 
   private async embedLocal(batch: string[]): Promise<number[][]> {

@@ -13,7 +13,7 @@ import { SourceReference } from '../models';
         class="card"
         *ngFor="let source of sources; index as i"
         [style.animationDelay.ms]="i * 80"
-        (click)="taskSelected.emit(source.taskId)">
+        (click)="onCardClick(source.taskId)">
         <div class="id">{{ source.taskId }}</div>
         <div class="title">{{ source.title }}</div>
         <div class="badge">{{ (source.similarity * 100).toFixed(0) }}%</div>
@@ -78,4 +78,8 @@ import { SourceReference } from '../models';
 export class SourceCardComponent {
   @Input() sources: SourceReference[] | null = null;
   @Output() taskSelected = new EventEmitter<string>();
+
+  onCardClick(taskId: string): void {
+    this.taskSelected.emit(taskId);
+  }
 }

@@ -12,13 +12,16 @@ export interface ChatMessage {
   sources?: SourceReference[];
   createdAt: string;
   streaming?: boolean;
+  isHistorical?: boolean;
 }
 
 export interface ChatChunk {
-  type: 'chunk' | 'sources' | 'done' | 'error';
+  type: 'chunk' | 'sources' | 'done' | 'error' | 'confirmation';
   content?: string;
   sources?: SourceReference[];
   error?: string;
+  confirmationMessage?: string;
+  pendingIntent?: unknown;
 }
 
 export interface HistoryPage {

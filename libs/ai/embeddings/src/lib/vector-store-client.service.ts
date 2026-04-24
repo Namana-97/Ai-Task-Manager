@@ -13,7 +13,7 @@ interface PgSearchRow {
 export class VectorStoreClient {
   private readonly logger = new Logger(VectorStoreClient.name);
   private readonly provider = process.env.VECTOR_STORE ?? 'pgvector';
-  private readonly dimensions = parseInt(process.env.EMBEDDING_DIMENSIONS ?? '384', 10);
+  private readonly dimensions = parseInt(process.env.EMBEDDING_DIMENSIONS ?? '768', 10);
   private readonly pool =
     this.provider === 'pgvector' && process.env.VECTOR_STORE_URL
       ? new Pool({ connectionString: process.env.VECTOR_STORE_URL })

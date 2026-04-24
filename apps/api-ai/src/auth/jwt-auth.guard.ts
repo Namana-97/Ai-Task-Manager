@@ -36,16 +36,27 @@ export const CurrentUser = createParamDecorator((_data: unknown, context: Execut
 function parseStubUser(authHeader?: string, mockUserHeader?: string): AuthenticatedUser {
   const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
   const requestedRole = mockUserHeader?.trim().toLowerCase();
+  const role =
+    requestedRole === 'owner' || token === 'owner-token'
+      ? 'owner'
+      : requestedRole === 'viewer' || token === 'viewer-token'
+        ? 'viewer'
+        : 'admin';
+
+  const seededUserId =
+    token && !['dev-stub-token', 'viewer-token', 'owner-token', 'admin-token'].includes(token)
+      ? token
+      : role === 'owner'
+        ? 'user-003'
+        : role === 'viewer'
+          ? 'user-001'
+          : 'user-002';
+
   return {
-    id: token || 'user-001',
+    id: seededUserId,
     orgId: 'org-root',
     orgName: 'Acme Product',
-    role:
-      requestedRole === 'owner' || token === 'owner-token'
-        ? 'owner'
-        : requestedRole === 'viewer' || token === 'viewer-token'
-          ? 'viewer'
-          : 'admin',
+    role,
     childOrgIds: ['org-root', 'org-design']
   };
 }

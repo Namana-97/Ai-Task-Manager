@@ -119,7 +119,10 @@ export class RagEngine {
     description?: string;
     category: string;
     status: string;
+    priority?: string;
     createdAt: Date;
+    updatedAt?: Date;
+    dueDate?: Date;
     tags: string[];
     activityLog: Array<{ timestamp: string; actorName: string; action: string; details?: string }>;
   }): string {
@@ -129,7 +132,10 @@ export class RagEngine {
       description: task.description,
       category: task.category,
       status: task.status,
+      priority: task.priority,
       createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      dueDate: task.dueDate,
       assigneeName: task.assignee.name,
       assigneeId: task.assignee.id,
       assigneeRole: task.assignee.role,
