@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { AnthropicTool, LlmRequest } from './models';
 import { RateLimitExceededError, SlidingWindowRateLimiter } from '@ai-task-manager/ai/guardrails';
+import { GeminiKeyPool } from './gemini-key-pool.service';
 
 const COST_TABLE: Record<string, { inputPer1k: number; outputPer1k: number }> = {
   'claude-sonnet-4-20250514': { inputPer1k: 0.003, outputPer1k: 0.015 },
@@ -24,11 +25,11 @@ export class LlmClient {
   private readonly openai = process.env.LLM_API_KEY
     ? new OpenAI({ apiKey: process.env.LLM_API_KEY })
     : null;
-  private readonly gemini = process.env.LLM_API_KEY
-    ? new GoogleGenerativeAI(process.env.LLM_API_KEY)
-    : null;
 
-  constructor(@Inject(SlidingWindowRateLimiter) private readonly rateLimiter: SlidingWindowRateLimiter) {}
+  constructor(
+    @Inject(SlidingWindowRateLimiter) private readonly rateLimiter: SlidingWindowRateLimiter,
+    @Inject(GeminiKeyPool) private readonly geminiKeyPool: GeminiKeyPool
+  ) {}
 
   async complete(request: LlmRequest): Promise<string> {
     const chunks: string[] = [];
@@ -70,42 +71,45 @@ export class LlmClient {
   }
 
   private async *streamGemini(request: LlmRequest, estimatedInputTokens: number): AsyncGenerator<string> {
-    if (!this.gemini) {
-      this.logger.warn('LLM_API_KEY missing, returning stub response');
+    if (!this.geminiKeyPool.hasKeys()) {
+      this.logger.warn('Gemini API keys missing, returning stub response');
       yield this.fallbackAnswer(request.userMessage);
       return;
     }
 
-    const model = this.gemini.getGenerativeModel({
-      model: this.model,
-      systemInstruction: request.systemPrompt
-    });
-    const chat = model.startChat({
-      history: (request.conversationHistory ?? []).map((message) => ({
-        role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.content }]
-      }))
-    });
+    const self = this;
+    let outputTokens = 0;
+    const streamOperation = async function* (client: GoogleGenerativeAI): AsyncGenerator<string> {
+      const model = client.getGenerativeModel({
+        model: self.model,
+        systemInstruction: request.systemPrompt
+      });
+      const chat = model.startChat({
+        history: (request.conversationHistory ?? []).map((message) => ({
+          role: message.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: message.content }]
+        }))
+      });
 
-    if (request.stream) {
-      const response = await chat.sendMessageStream(request.userMessage);
-      let outputTokens = 0;
-      for await (const chunk of response.stream) {
-        const token = chunk.text();
-        if (!token) {
-          continue;
+      if (request.stream) {
+        const response = await chat.sendMessageStream(request.userMessage);
+        for await (const chunk of response.stream) {
+          const token = chunk.text();
+          if (token) {
+            outputTokens += self.estimateTokens([token]);
+            yield token;
+          }
         }
-        outputTokens += this.estimateTokens([token]);
-        yield token;
+        return;
       }
-      this.logEstimatedCost(estimatedInputTokens, outputTokens);
-      return;
-    }
 
-    const response = await chat.sendMessage(request.userMessage);
-    const text = response.response.text();
-    this.logEstimatedCost(estimatedInputTokens, this.estimateTokens([text]));
-    yield text;
+      const response = await chat.sendMessage(request.userMessage);
+      const text = response.response.text();
+      outputTokens += self.estimateTokens([text]);
+      yield text;
+    };
+    yield* this.geminiKeyPool.streamWithClient(streamOperation);
+    this.logEstimatedCost(estimatedInputTokens, outputTokens);
   }
 
   private async *streamAnthropic(

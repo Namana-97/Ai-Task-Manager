@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { FunctionDeclaration, GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { FunctionDeclaration, SchemaType } from '@google/generative-ai';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { OutputValidator } from '@ai-task-manager/ai/guardrails';
-import { PromptLoader } from '@ai-task-manager/ai/rag';
+import { GeminiKeyPool, PromptLoader } from '@ai-task-manager/ai/rag';
 import { ClassifiedIntent, TaskMutationParams } from './models';
 
 const intentSchema = z.object({
@@ -40,7 +40,9 @@ export class AnthropicIntentClassifier {
     @Inject(PromptLoader)
     private readonly promptLoader: PromptLoader,
     @Inject(OutputValidator)
-    private readonly outputValidator: OutputValidator
+    private readonly outputValidator: OutputValidator,
+    @Inject(GeminiKeyPool)
+    private readonly geminiKeyPool: GeminiKeyPool
   ) {}
 
   async classify(message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<ClassifiedIntent> {
@@ -142,8 +144,7 @@ export class AnthropicIntentClassifier {
     message: string,
     history: Array<{ role: 'user' | 'assistant'; content: string }>
   ): Promise<ClassifiedIntent> {
-    const apiKey = process.env.LLM_API_KEY ?? '';
-    if (!apiKey) {
+    if (!this.geminiKeyPool.hasKeys()) {
       return this.heuristicFallback(message);
     }
 
@@ -211,20 +212,22 @@ Consider conversation history when resolving references like "that task" or "the
       }
     ];
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: this.model,
-      tools: [{ functionDeclarations: tools }],
-      systemInstruction: systemPrompt
-    });
+    const result = await this.geminiKeyPool.withClient(async (client) => {
+      const model = client.getGenerativeModel({
+        model: this.model,
+        tools: [{ functionDeclarations: tools }],
+        systemInstruction: systemPrompt
+      });
 
-    const chat = model.startChat({
-      history: history.map((entry) => ({
-        role: entry.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: entry.content }]
-      }))
+      const chat = model.startChat({
+        history: history.map((entry) => ({
+          role: entry.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: entry.content }]
+        }))
+      });
+
+      return chat.sendMessage(message);
     });
-    const result = await chat.sendMessage(message);
     const response = result.response as {
       candidates?: Array<{
         content?: {

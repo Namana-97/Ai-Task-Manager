@@ -14,7 +14,7 @@ import {
   TaskActionExecutor,
   TaskMutationStore
 } from '@ai-task-manager/ai/intents';
-import { LlmClient, PromptLoader, RagEngine } from '@ai-task-manager/ai/rag';
+import { GeminiKeyPool, LlmClient, PromptLoader, RagEngine } from '@ai-task-manager/ai/rag';
 import { ChatController } from './chat/chat.controller';
 import { ChatService } from './chat/chat.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
@@ -41,6 +41,7 @@ import { AppBootstrapService } from './app-bootstrap.service';
     ChatService,
     DatabaseService,
     EmbeddingClient,
+    GeminiKeyPool,
     InputSanitiser,
     InsightsService,
     JwtAuthGuard,

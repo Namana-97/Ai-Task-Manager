@@ -1,10 +1,4 @@
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  OnInit,
-  signal
-} from '@angular/core';
+import { AfterViewInit, Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChatPanelComponent } from '@task-ai/ui-chat';
@@ -146,13 +140,7 @@ interface Task {
         </header>
 
         <div class="metrics-bar" *ngIf="activeView() === 'dashboard'">
-          <div
-            class="metric"
-            *ngFor="let m of metricsList(); let i = index"
-            [class.metric-primary]="i === 0"
-            [class.metric-emphasis]="m.label === 'IN PROGRESS'"
-            [class.metric-alert]="m.label === 'BLOCKED'"
-            [style.animation-delay]="(i * 80) + 'ms'">
+          <div class="metric" *ngFor="let m of metricsList(); let i = index" [style.animation-delay]="(i * 80) + 'ms'">
             <span class="metric-num">{{ m.value }}</span>
             <span class="metric-label">{{ m.label }}</span>
             <div class="metric-bar-fill" [style.width]="m.pct + '%'"></div>
@@ -161,34 +149,10 @@ interface Task {
 
         <div class="content">
           <ng-container *ngIf="activeView() === 'dashboard'">
-            <section class="hero-panel">
-              <div class="hero-copy">
-                <span class="hero-kicker">PRIMARY FOCUS</span>
-                <h1 class="hero-title">EXECUTION COMMAND DECK</h1>
-                <p class="hero-text">
-                  Prioritize active delivery, isolate blockers fast, and monitor AI-generated signals without
-                  losing the operational thread.
-                </p>
-              </div>
-
-              <div class="hero-focus" *ngIf="currentFocusTask() as focus">
-                <span class="hero-focus-label">WATCH ITEM</span>
-                <span class="hero-focus-id">{{ focus.id }}</span>
-                <strong class="hero-focus-title">{{ focus.title }}</strong>
-                <div class="hero-focus-meta">
-                  <span class="hero-focus-status" [attr.data-status]="focus.status">{{ focus.status }}</span>
-                  <span class="hero-focus-category">{{ focus.category }}</span>
-                </div>
-              </div>
-            </section>
-
             <div class="dashboard-grid">
               <section class="panel task-panel">
                 <div class="panel-header">
-                  <div class="panel-heading">
-                    <span class="panel-title">ACTIVE TASKS</span>
-                    <span class="panel-subtitle">Live work ordered for fast scan and status recognition.</span>
-                  </div>
+                  <span class="panel-title">ACTIVE TASKS</span>
                   <span class="panel-count">{{ tasks().length }}</span>
                 </div>
                 <div class="task-feed">
@@ -213,14 +177,11 @@ interface Task {
 
               <section class="panel insights-preview-panel">
                 <div class="panel-header">
-                  <div class="panel-heading">
-                    <span class="panel-title">SIGNAL FEED</span>
-                    <span class="panel-subtitle">Anomalies, warnings, and generated operational guidance.</span>
-                  </div>
+                  <span class="panel-title">SIGNAL FEED</span>
                   <button class="panel-action" (click)="setView('insights'); loadInsights()">VIEW ALL →</button>
                 </div>
                 <div class="signal-list">
-                  <div class="signal-row" *ngFor="let ins of insights().slice(0,4)" [attr.data-severity]="ins.severity">
+                  <div class="signal-row" *ngFor="let ins of insights().slice(0, 4)" [attr.data-severity]="ins.severity">
                     <div class="signal-bar"></div>
                     <p class="signal-msg">{{ ins.message }}</p>
                   </div>
@@ -234,22 +195,22 @@ interface Task {
 
           <ng-container *ngIf="activeView() === 'insights'">
             <div class="view-header">
-              <div>
-                <span class="view-kicker">INTELLIGENCE</span>
-                <h1 class="view-title">INTELLIGENCE FEED</h1>
-                <p class="view-subtitle">Operational alerts, trend changes, and model-generated signal summaries.</p>
-              </div>
+              <h1 class="view-title">INTELLIGENCE FEED</h1>
               <button class="refresh-btn" (click)="loadInsights()">REFRESH</button>
             </div>
-            <div class="insights-grid" *ngIf="insights().length">
-              <div class="insight-card" *ngFor="let ins of insights(); let i = index" [attr.data-severity]="ins.severity" [style.animation-delay]="(i * 60) + 'ms'">
+            <div class="insights-grid">
+              <div
+                class="insight-card"
+                *ngFor="let ins of insights(); let i = index"
+                [attr.data-severity]="ins.severity"
+                [style.animation-delay]="(i * 60) + 'ms'">
                 <div class="insight-card-top">
                   <span class="insight-type">{{ ins.type | uppercase }}</span>
                   <span class="insight-sev">{{ ins.severity | uppercase }}</span>
                 </div>
                 <p class="insight-msg">{{ ins.message }}</p>
                 <div class="insight-tasks" *ngIf="ins.taskIds?.length">
-                  <span class="task-ref" *ngFor="let id of ins.taskIds.slice(0,3)">{{ id }}</span>
+                  <span class="task-ref" *ngFor="let id of ins.taskIds.slice(0, 3)">{{ id }}</span>
                 </div>
                 <div class="insight-metric" *ngIf="ins.metric">
                   <span class="metric-current">{{ ins.metric.current }}</span>
@@ -258,63 +219,31 @@ interface Task {
                 </div>
               </div>
             </div>
-            <div class="empty-view rich-empty-state" *ngIf="!insights().length">
-              <div class="empty-icon-grid">
-                <span></span><span></span><span></span><span class="active"></span>
-              </div>
-              <span class="empty-title">{{ viewError() ? 'SIGNAL FEED UNAVAILABLE' : 'NO LIVE SIGNALS YET' }}</span>
-              <p class="empty-copy">
-                {{
-                  viewError()
-                    ?? 'Pull the latest insights to populate anomaly tracking, velocity changes, and risk signals.'
-                }}
-              </p>
-              <button class="empty-action" (click)="loadInsights()">REFRESH FEED</button>
-            </div>
           </ng-container>
 
           <ng-container *ngIf="activeView() === 'standup'">
             <div class="view-header">
-              <div>
-                <span class="view-kicker">REPORTING</span>
-                <h1 class="view-title">DAILY STANDUP</h1>
-                <p class="view-subtitle">Generate a concise status report from the current task and retrieval context.</p>
-              </div>
+              <h1 class="view-title">DAILY STANDUP</h1>
               <button class="refresh-btn" (click)="loadStandup()">GENERATE</button>
             </div>
             <div class="standup-card" *ngIf="standup(); else noStandup">
               <div class="standup-content" [innerHTML]="standup()"></div>
             </div>
             <ng-template #noStandup>
-              <div class="empty-view rich-empty-state standup-empty-state">
-                <div class="empty-terminal">
-                  <span></span>
-                  <span></span>
-                  <span class="long"></span>
-                </div>
-                <span class="empty-title">{{ viewError() ? 'STANDUP GENERATION BLOCKED' : 'READY TO GENERATE' }}</span>
-                <p class="empty-copy">
-                  {{
-                    viewError()
-                      ?? 'Generate a daily brief with completions, in-flight work, blockers, and upcoming focus areas.'
-                  }}
-                </p>
-                <button class="empty-action" (click)="loadStandup()">GENERATE STANDUP</button>
+              <div class="empty-view">
+                <span class="empty-label">CLICK GENERATE TO PULL TODAY'S STANDUP</span>
               </div>
             </ng-template>
           </ng-container>
 
           <ng-container *ngIf="activeView() === 'tasks'">
             <div class="view-header">
-              <div>
-                <span class="view-kicker">REGISTRY</span>
-                <h1 class="view-title">TASK REGISTRY</h1>
-                <p class="view-subtitle">Structured task ledger with stronger row emphasis and status readability.</p>
-              </div>
+              <h1 class="view-title">TASK REGISTRY</h1>
             </div>
             <div class="task-table">
               <div class="table-head">
-                <span>ID</span><span>TITLE</span><span>CATEGORY</span><span>ASSIGNEE</span><span>STATUS</span>
+                <span>ID</span><span>TITLE</span><span>CATEGORY</span>
+                <span>ASSIGNEE</span><span>STATUS</span>
               </div>
               <div class="table-row" *ngFor="let t of tasks(); let i = index" [style.animation-delay]="(i * 30) + 'ms'">
                 <span class="col-id">{{ t.id }}</span>
@@ -331,1053 +260,678 @@ interface Task {
 
     <task-chat-panel (taskSelected)="onTaskSelected($event)"></task-chat-panel>
   `,
-  styles: [
-    `
-      .shell {
-        display: flex;
-        height: 100vh;
-        overflow: hidden;
-        background: var(--bg-void);
-        opacity: 0;
-        transition: opacity var(--duration-slow) var(--ease-sharp);
+  styles: [`
+    .shell {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-void);
+      opacity: 0;
+      transition: opacity var(--duration-slow) var(--ease-sharp);
+    }
+    .shell.loaded { opacity: 1; }
+
+    .scanline {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--amber), transparent);
+      opacity: 0.15;
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--bg-base);
+      border-right: 1px solid var(--border);
+      padding: 0;
+      animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+    }
+    .sidebar-top { display: flex; flex-direction: column; }
+    .sidebar-bottom { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-mark {
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: filter var(--duration-mid) var(--ease-sharp);
+    }
+    .logo:hover .logo-mark { filter: drop-shadow(0 0 6px var(--amber-glow)); }
+    .logo-name {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      display: block;
+      line-height: 1;
+    }
+    .logo-ai { color: var(--amber); }
+    .logo-version {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      padding: 12px 8px;
+      gap: 2px;
+    }
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      border-radius: var(--radius-sm);
+      transition: all var(--duration-fast) var(--ease-sharp);
+    }
+    .nav-item:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+    .nav-item.active {
+      color: var(--amber);
+      background: var(--amber-dim);
+    }
+    .nav-icon { flex-shrink: 0; display: flex; }
+    .nav-label { flex: 1; }
+    .nav-indicator {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
+      animation: amberPulse 2s infinite;
+    }
+    .nav-badge {
+      font-size: 9px;
+      background: var(--amber);
+      color: #000;
+      padding: 1px 5px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+
+    .role-block { display: flex; flex-direction: column; gap: 6px; }
+    .block-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+    .role-pills { display: flex; gap: 4px; }
+    .role-pill {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 3px 7px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: all var(--duration-fast) var(--ease-sharp);
+    }
+    .role-pill:hover { border-color: var(--border-strong); color: var(--text-primary); }
+    .role-pill.active {
+      border-color: var(--amber);
+      color: var(--amber);
+      background: var(--amber-dim);
+    }
+
+    .user-block {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .user-avatar {
+      width: 26px; height: 26px;
+      border: 1px solid var(--amber-border);
+      color: var(--amber);
+      font-family: var(--font-display);
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: box-shadow var(--duration-mid) var(--ease-sharp);
+    }
+    .user-avatar:hover { box-shadow: 0 0 8px var(--amber-glow); }
+    .user-name {
+      display: block;
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+    }
+    .user-role {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+    .connection-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      margin-left: auto;
+      flex-shrink: 0;
+      transition: all var(--duration-mid) ease;
+    }
+    .connection-dot.online {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+      animation: amberPulse 3s infinite;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) 80ms both;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-base);
+      flex-shrink: 0;
+    }
+    .breadcrumb {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .breadcrumb-sep { margin: 0 6px; }
+    .breadcrumb-current { color: var(--amber); }
+    .header-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
+    .header-right { display: flex; align-items: center; }
+
+    .status-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .status-chip.online {
+      border-color: rgba(76, 175, 121, 0.3);
+      color: var(--success);
+    }
+    .chip-dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-chip.online .chip-dot { animation: amberPulse 2s infinite; }
+    .header-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--amber);
+      margin-left: 16px;
+      min-width: 58px;
+      text-align: right;
+    }
+
+    .metrics-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .metric {
+      flex: 1;
+      padding: 14px 24px;
+      border-right: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+      transition: background var(--duration-fast) ease;
+    }
+    .metric:last-child { border-right: none; }
+    .metric:hover { background: var(--bg-surface); }
+    .metric-num {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 300;
+      color: var(--text-primary);
+      line-height: 1;
+      animation: countUp 400ms var(--ease-sharp) both;
+    }
+    .metric-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .metric-bar-fill {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      background: var(--amber);
+      opacity: 0.4;
+      transition: width 800ms var(--ease-sharp);
+    }
+    .metric:first-child .metric-num { color: var(--amber); }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 16px;
+      height: 100%;
+    }
+
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+    }
+    .panel-count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--amber);
+    }
+    .panel-action {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: var(--amber);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: opacity var(--duration-fast);
+    }
+    .panel-action:hover { opacity: 0.7; }
+
+    .task-feed { overflow-y: auto; flex: 1; }
+    .task-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
+      transition: background var(--duration-fast);
+    }
+    .task-row:hover { background: var(--bg-hover); }
+    .task-row:last-child { border-bottom: none; }
+    .task-left { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+    .task-status-bar {
+      width: 2px;
+      height: 32px;
+      flex-shrink: 0;
+      background: var(--text-muted);
+    }
+    [data-status="In Progress"] .task-status-bar,
+    [data-status="In Progress"].task-status-bar { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
+    [data-status="Done"] .task-status-bar,
+    [data-status="Done"].task-status-bar { background: var(--success); }
+    [data-status="Blocked"] .task-status-bar,
+    [data-status="Blocked"].task-status-bar { background: var(--danger); }
+
+    .task-info { overflow: hidden; }
+    .task-title {
+      display: block;
+      font-size: 12px;
+      font-weight: 400;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 280px;
+    }
+    .task-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .task-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+    .task-id {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--amber);
+      letter-spacing: 0.05em;
+    }
+    .task-status-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    [data-status="In Progress"].task-status-tag { border-color: var(--amber-border); color: var(--amber); }
+    [data-status="Done"].task-status-tag { border-color: rgba(76, 175, 121, 0.3); color: var(--success); }
+    [data-status="Blocked"].task-status-tag { border-color: rgba(224, 82, 82, 0.3); color: var(--danger); }
+    .task-empty {
+      padding: 32px 16px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .signal-list { padding: 8px 0; overflow-y: auto; flex: 1; }
+    .signal-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      transition: background var(--duration-fast);
+    }
+    .signal-row:hover { background: var(--bg-hover); }
+    .signal-row:last-child { border-bottom: none; }
+    .signal-bar {
+      width: 2px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+    [data-severity="info"] .signal-bar { background: var(--info); }
+    [data-severity="warning"] .signal-bar { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
+    [data-severity="critical"] .signal-bar { background: var(--danger); box-shadow: 0 0 6px rgba(224, 82, 82, 0.4); }
+    .signal-msg { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+    .signal-empty {
+      padding: 32px 16px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+    .view-title {
+      font-family: var(--font-display);
+      font-size: 32px;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+    }
+    .refresh-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 7px 16px;
+      border: 1px solid var(--amber-border);
+      background: var(--amber-dim);
+      color: var(--amber);
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+    .refresh-btn:hover { background: var(--amber); color: #000; }
+
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .insight-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 16px;
+      animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+      transition: border-color var(--duration-fast), background var(--duration-fast);
+    }
+    .insight-card:hover { background: var(--bg-elevated); }
+    [data-severity="critical"].insight-card { border-left: 2px solid var(--danger); }
+    [data-severity="warning"].insight-card { border-left: 2px solid var(--amber); }
+    [data-severity="info"].insight-card { border-left: 2px solid var(--info); }
+    .insight-card-top {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .insight-type {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+    .insight-sev {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+    }
+    [data-severity="critical"] .insight-sev { color: var(--danger); }
+    [data-severity="warning"] .insight-sev { color: var(--amber); }
+    [data-severity="info"] .insight-sev { color: var(--info); }
+    .insight-msg { font-size: 12px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 10px; }
+    .insight-tasks { display: flex; gap: 4px; flex-wrap: wrap; }
+    .task-ref {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      padding: 2px 6px;
+      border: 1px solid var(--amber-border);
+      color: var(--amber);
+      letter-spacing: 0.04em;
+    }
+    .insight-metric {
+      margin-top: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .metric-current { color: var(--text-primary); font-size: 16px; }
+    .metric-sep { color: var(--text-muted); margin: 0 4px; }
+    .metric-baseline { color: var(--text-muted); }
+
+    .standup-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      padding: 28px 32px;
+      animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+      max-width: 720px;
+    }
+    .standup-content { font-size: 13px; line-height: 1.8; color: var(--text-secondary); }
+    .standup-content h2 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--text-primary);
+      margin: 20px 0 8px;
+      letter-spacing: 0.05em;
+    }
+    .standup-content h2:first-child { margin-top: 0; }
+    .standup-content ul { padding-left: 16px; }
+    .standup-content li { margin: 4px 0; }
+
+    .task-table {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+    }
+    .table-head {
+      display: grid;
+      grid-template-columns: 100px 1fr 140px 140px 120px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 140px 140px 120px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 12px;
+      animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
+      transition: background var(--duration-fast);
+    }
+    .table-row:hover { background: var(--bg-hover); }
+    .table-row:last-child { border-bottom: none; }
+    .col-id { font-family: var(--font-mono); font-size: 10px; color: var(--amber); }
+    .col-cat, .col-assignee { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); }
+    .col-status { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; }
+    [data-status="In Progress"].col-status { color: var(--amber); }
+    [data-status="Done"].col-status { color: var(--success); }
+    [data-status="Blocked"].col-status { color: var(--danger); }
+
+    .empty-view {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      text-align: center;
+      padding: 24px;
+    }
+
+    @media (max-width: 1100px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
       }
+    }
 
-      .shell.loaded { opacity: 1; }
-
-      .scanline {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--amber), transparent);
-        opacity: 0.15;
-        animation: scanline 8s linear infinite;
-        pointer-events: none;
-        z-index: 100;
+    @media (max-width: 900px) {
+      .shell {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
       }
 
       .sidebar {
-        width: 200px;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        background: var(--bg-base);
-        border-right: 1px solid var(--border);
-        padding: 0;
-        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-      }
-
-      .sidebar-top {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .sidebar-bottom {
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 20px 16px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .logo-mark {
-        color: var(--amber);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: filter var(--duration-mid) var(--ease-sharp);
-      }
-
-      .logo:hover .logo-mark {
-        filter: drop-shadow(0 0 6px var(--amber-glow));
-      }
-
-      .logo-name {
-        font-family: var(--font-display);
-        font-size: 18px;
-        letter-spacing: 0.05em;
-        color: var(--text-primary);
-        display: block;
-        line-height: 1;
-      }
-
-      .logo-ai { color: var(--amber); }
-
-      .logo-version {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        color: var(--text-muted);
-        display: block;
-        margin-top: 2px;
-      }
-
-      .sidebar-divider {
-        height: 1px;
-        background: var(--border);
-        margin: 0;
-      }
-
-      .nav {
-        display: flex;
-        flex-direction: column;
-        padding: 12px 8px;
-        gap: 2px;
-      }
-
-      .nav-item {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 8px;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
-        font-family: var(--font-mono);
-        font-size: 10px;
-        font-weight: 400;
-        letter-spacing: 0.1em;
-        cursor: pointer;
-        text-align: left;
         width: 100%;
-        border-radius: var(--radius-sm);
-        transition: all var(--duration-fast) var(--ease-sharp);
-      }
-
-      .nav-item:hover {
-        color: var(--text-primary);
-        background: var(--bg-hover);
-      }
-
-      .nav-item.active {
-        color: var(--amber);
-        background: var(--amber-dim);
-      }
-
-      .nav-icon {
-        flex-shrink: 0;
-        display: flex;
-      }
-
-      .nav-label { flex: 1; }
-
-      .nav-indicator {
-        width: 3px;
-        height: 3px;
-        border-radius: 50%;
-        background: var(--amber);
-        box-shadow: 0 0 6px var(--amber);
-        animation: amberPulse 2s infinite;
-      }
-
-      .nav-badge {
-        font-size: 9px;
-        background: var(--amber);
-        color: #000;
-        padding: 1px 5px;
-        border-radius: var(--radius-sm);
-        font-weight: 500;
-      }
-
-      .role-block {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .block-label {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        color: var(--text-muted);
-      }
-
-      .role-pills {
-        display: flex;
-        gap: 4px;
-      }
-
-      .role-pill {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.06em;
-        padding: 3px 7px;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--text-secondary);
-        cursor: pointer;
-        border-radius: var(--radius-sm);
-        transition: all var(--duration-fast) var(--ease-sharp);
-      }
-
-      .role-pill:hover {
-        border-color: var(--border-strong);
-        color: var(--text-primary);
-      }
-
-      .role-pill.active {
-        border-color: var(--amber);
-        color: var(--amber);
-        background: var(--amber-dim);
-      }
-
-      .user-block {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .user-avatar {
-        width: 26px;
-        height: 26px;
-        border: 1px solid var(--amber-border);
-        color: var(--amber);
-        font-family: var(--font-display);
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        transition: box-shadow var(--duration-mid) var(--ease-sharp);
-      }
-
-      .user-avatar:hover {
-        box-shadow: 0 0 8px var(--amber-glow);
-      }
-
-      .user-name {
-        display: block;
-        font-size: 11px;
-        font-weight: 400;
-        color: var(--text-primary);
-        font-family: var(--font-body);
-      }
-
-      .user-role {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        color: var(--text-muted);
-        letter-spacing: 0.08em;
-      }
-
-      .connection-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--text-muted);
-        margin-left: auto;
-        flex-shrink: 0;
-        transition: all var(--duration-mid) ease;
-      }
-
-      .connection-dot.online {
-        background: var(--success);
-        box-shadow: 0 0 6px var(--success);
-        animation: amberPulse 3s infinite;
       }
 
       .main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) 80ms both;
+        min-height: 0;
       }
 
-      .header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 28px;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-base);
-        flex-shrink: 0;
-      }
-
-      .breadcrumb {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        color: var(--text-muted);
-      }
-
-      .breadcrumb-sep { margin: 0 6px; }
-
-      .breadcrumb-current { color: var(--amber); }
-
-      .header-date {
-        font-size: 10px;
-        color: var(--text-muted);
-        margin-top: 2px;
-        font-family: var(--font-mono);
-      }
-
-      .header-right {
-        display: flex;
-        align-items: center;
-      }
-
-      .status-chip {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        padding: 4px 10px;
-        border: 1px solid var(--border);
-        color: var(--text-muted);
-      }
-
-      .status-chip.online {
-        border-color: rgba(76, 175, 121, 0.3);
-        color: var(--success);
-      }
-
-      .chip-dot {
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: currentColor;
-      }
-
-      .status-chip.online .chip-dot { animation: amberPulse 2s infinite; }
-
-      .header-time {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--amber);
-        margin-left: 16px;
-        min-width: 48px;
-        text-align: right;
+      .header,
+      .metrics-bar,
+      .table-head,
+      .table-row {
+        grid-template-columns: none;
       }
 
       .metrics-bar {
-        display: flex;
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent);
+        flex-direction: column;
       }
 
       .metric {
-        flex: 1;
-        padding: 14px 24px;
-        border-right: 1px solid var(--border);
-        position: relative;
-        overflow: hidden;
-        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-        transition: background var(--duration-fast) ease;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
       }
 
-      .metric:last-child { border-right: none; }
-
-      .metric:hover { background: var(--bg-surface); }
-
-      .metric-primary {
-        background: linear-gradient(180deg, rgba(240, 165, 0, 0.09), transparent 85%);
+      .metric:last-child {
+        border-bottom: none;
       }
 
-      .metric-emphasis .metric-num {
-        color: var(--amber-bright);
+      .task-table {
+        overflow-x: auto;
       }
 
-      .metric-alert .metric-num {
-        color: #ff8b6e;
+      .table-head,
+      .table-row {
+        min-width: 720px;
       }
+    }
 
-      .metric-num {
-        display: block;
-        font-family: var(--font-mono);
-        font-size: 26px;
-        font-weight: 300;
-        color: var(--text-primary);
-        line-height: 1;
-        animation: countUp 400ms var(--ease-sharp) both;
-      }
-
-      .metric-label {
-        display: block;
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        color: var(--text-muted);
-        margin-top: 4px;
-      }
-
-      .metric-bar-fill {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        height: 2px;
-        background: var(--amber);
-        opacity: 0.4;
-        transition: width 800ms var(--ease-sharp);
-      }
-
-      .metric:first-child .metric-num { color: var(--amber); }
-
+    @media (max-width: 640px) {
+      .header,
       .content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 24px;
+        padding-left: 16px;
+        padding-right: 16px;
       }
 
-      .hero-panel {
-        display: grid;
-        grid-template-columns: 1.4fr 0.9fr;
-        gap: 16px;
-        margin-bottom: 18px;
-        padding: 22px 24px;
-        border: 1px solid var(--border-strong);
-        background:
-          radial-gradient(circle at top right, rgba(240, 165, 0, 0.08), transparent 40%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
-      }
-
-      .hero-kicker,
-      .view-kicker {
-        display: inline-block;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.18em;
-        color: var(--amber);
-        margin-bottom: 8px;
-      }
-
-      .hero-title {
-        font-family: var(--font-display);
-        font-size: 44px;
-        line-height: 0.92;
-        letter-spacing: 0.04em;
-        color: var(--text-primary);
-        margin-bottom: 10px;
-      }
-
-      .hero-text {
-        max-width: 62ch;
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-
-      .hero-focus {
-        display: flex;
+      .header {
         flex-direction: column;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 16px;
-        border: 1px solid var(--amber-border);
-        background: rgba(240, 165, 0, 0.05);
-      }
-
-      .hero-focus-label {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.18em;
-        color: var(--text-muted);
-      }
-
-      .hero-focus-id {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--amber);
-      }
-
-      .hero-focus-title {
-        font-size: 18px;
-        font-weight: 500;
-        line-height: 1.3;
-        color: var(--text-primary);
-      }
-
-      .hero-focus-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-      }
-
-      .hero-focus-status,
-      .task-status-tag,
-      .col-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-weight: 500;
-      }
-
-      .hero-focus-status::before,
-      .task-status-tag::before,
-      .col-status::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: currentColor;
-        box-shadow: 0 0 8px currentColor;
-      }
-
-      .hero-focus-category {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-secondary);
-      }
-
-      .dashboard-grid {
-        display: grid;
-        grid-template-columns: 1.6fr 1fr;
-        gap: 16px;
-        height: 100%;
-      }
-
-      .panel {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-      }
-
-      .panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-      }
-
-      .panel-heading {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-      }
-
-      .panel-title {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.15em;
-        color: var(--text-muted);
-      }
-
-      .panel-subtitle {
-        font-size: 11px;
-        color: var(--text-secondary);
-      }
-
-      .panel-count {
-        font-family: var(--font-mono);
-        font-size: 15px;
-        color: var(--amber);
-        min-width: 28px;
-        text-align: right;
-      }
-
-      .panel-action {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.08em;
-        color: var(--amber);
-        background: transparent;
-        border: 1px solid transparent;
-        cursor: pointer;
-        padding: 6px 8px;
-        transition: all var(--duration-fast);
-      }
-
-      .panel-action:hover {
-        border-color: var(--amber-border);
-        background: var(--amber-dim);
-      }
-
-      .task-feed {
-        overflow-y: auto;
-        flex: 1;
-      }
-
-      .task-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border-subtle);
-        animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
-        transition: background var(--duration-fast), border-color var(--duration-fast);
-      }
-
-      .task-row:hover {
-        background: linear-gradient(90deg, rgba(240, 165, 0, 0.05), transparent 45%);
-        border-color: rgba(240, 165, 0, 0.08);
-      }
-
-      .task-row:last-child { border-bottom: none; }
-
-      .task-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        overflow: hidden;
-      }
-
-      .task-status-bar {
-        width: 2px;
-        height: 32px;
-        flex-shrink: 0;
-        background: var(--text-muted);
-      }
-
-      [data-status="In Progress"] .task-status-bar,
-      [data-status="In Progress"].task-status-bar {
-        background: var(--amber);
-        box-shadow: 0 0 6px var(--amber-glow);
-      }
-
-      [data-status="Done"] .task-status-bar,
-      [data-status="Done"].task-status-bar { background: var(--success); }
-
-      [data-status="Blocked"] .task-status-bar,
-      [data-status="Blocked"].task-status-bar { background: var(--danger); }
-
-      .task-info { overflow: hidden; }
-
-      .task-title {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 280px;
-      }
-
-      .task-sub {
-        font-size: 10px;
-        color: var(--text-muted);
-        font-family: var(--font-mono);
-      }
-
-      .task-right {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 3px;
-        flex-shrink: 0;
-      }
-
-      .task-id {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        color: var(--amber);
-        letter-spacing: 0.05em;
-      }
-
-      .task-status-tag {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        padding: 4px 8px;
-        border: 1px solid var(--border);
-        color: var(--text-muted);
-        background: rgba(255, 255, 255, 0.02);
-      }
-
-      [data-status="In Progress"].task-status-tag {
-        border-color: var(--amber-border);
-        color: var(--amber);
-      }
-
-      [data-status="Done"].task-status-tag {
-        border-color: rgba(76, 175, 121, 0.3);
-        color: var(--success);
-      }
-
-      [data-status="Blocked"].task-status-tag {
-        border-color: rgba(224, 82, 82, 0.3);
-        color: var(--danger);
-      }
-
-      .task-empty,
-      .signal-empty {
-        padding: 32px 16px;
-        text-align: center;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--text-muted);
-        letter-spacing: 0.1em;
-      }
-
-      .signal-list {
-        padding: 8px 0;
-        overflow-y: auto;
-        flex: 1;
-      }
-
-      .signal-row {
-        display: flex;
         align-items: flex-start;
-        gap: 10px;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border-subtle);
-        transition: background var(--duration-fast);
-      }
-
-      .signal-row:hover {
-        background: linear-gradient(90deg, rgba(240, 165, 0, 0.05), transparent 60%);
-      }
-
-      .signal-row:last-child { border-bottom: none; }
-
-      .signal-bar {
-        width: 2px;
-        height: 36px;
-        flex-shrink: 0;
-      }
-
-      [data-severity="info"] .signal-bar { background: var(--info); }
-
-      [data-severity="warning"] .signal-bar {
-        background: var(--amber);
-        box-shadow: 0 0 6px var(--amber-glow);
-      }
-
-      [data-severity="critical"] .signal-bar {
-        background: var(--danger);
-        box-shadow: 0 0 6px rgba(224, 82, 82, 0.4);
-      }
-
-      .signal-msg {
-        font-size: 12px;
-        line-height: 1.5;
-        color: var(--text-secondary);
-      }
-
-      .view-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 20px;
-        padding-bottom: 18px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .view-title {
-        font-family: var(--font-display);
-        font-size: 38px;
-        letter-spacing: 0.05em;
-        color: var(--text-primary);
-      }
-
-      .view-subtitle {
-        margin-top: 4px;
-        font-size: 13px;
-        color: var(--text-secondary);
-      }
-
-      .refresh-btn {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        padding: 7px 16px;
-        border: 1px solid var(--amber-border);
-        background: var(--amber-dim);
-        color: var(--amber);
-        cursor: pointer;
-        transition: all var(--duration-fast);
-      }
-
-      .refresh-btn:hover {
-        background: var(--amber);
-        color: #000;
-      }
-
-      .insights-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 12px;
       }
 
-      .insight-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        padding: 16px;
-        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-        transition: border-color var(--duration-fast), background var(--duration-fast);
-      }
-
-      .insight-card:hover { background: var(--bg-elevated); }
-
-      [data-severity="critical"].insight-card { border-left: 2px solid var(--danger); }
-      [data-severity="warning"].insight-card { border-left: 2px solid var(--amber); }
-      [data-severity="info"].insight-card { border-left: 2px solid var(--info); }
-
-      .insight-card-top {
-        display: flex;
+      .header-right,
+      .view-header {
+        width: 100%;
         justify-content: space-between;
-        margin-bottom: 8px;
       }
 
-      .insight-type {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        color: var(--text-muted);
+      .sidebar-bottom {
+        gap: 16px;
       }
 
-      .insight-sev {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.08em;
-      }
-
-      [data-severity="critical"] .insight-sev { color: var(--danger); }
-      [data-severity="warning"] .insight-sev { color: var(--amber); }
-      [data-severity="info"] .insight-sev { color: var(--info); }
-
-      .insight-msg {
-        font-size: 12px;
-        line-height: 1.6;
-        color: var(--text-secondary);
-        margin-bottom: 10px;
-      }
-
-      .insight-tasks {
-        display: flex;
-        gap: 4px;
+      .role-pills {
         flex-wrap: wrap;
       }
-
-      .task-ref {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        padding: 2px 6px;
-        border: 1px solid var(--amber-border);
-        color: var(--amber);
-        letter-spacing: 0.04em;
-      }
-
-      .insight-metric {
-        margin-top: 8px;
-        font-family: var(--font-mono);
-        font-size: 11px;
-      }
-
-      .metric-current {
-        color: var(--text-primary);
-        font-size: 16px;
-      }
-
-      .metric-sep {
-        color: var(--text-muted);
-        margin: 0 4px;
-      }
-
-      .metric-baseline { color: var(--text-muted); }
-
-      .standup-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        padding: 28px 32px;
-        animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-        max-width: 720px;
-      }
-
-      .standup-content {
-        font-size: 13px;
-        line-height: 1.8;
-        color: var(--text-secondary);
-      }
-
-      .standup-content h2 {
-        font-family: var(--font-display);
-        font-size: 18px;
-        color: var(--text-primary);
-        margin: 20px 0 8px;
-        letter-spacing: 0.05em;
-      }
-
-      .standup-content h2:first-child { margin-top: 0; }
-
-      .standup-content ul { padding-left: 16px; }
-      .standup-content li { margin: 4px 0; }
-
-      .task-table {
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        overflow: hidden;
-      }
-
-      .table-head {
-        display: grid;
-        grid-template-columns: 100px 1fr 140px 140px 120px;
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--border);
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        color: var(--text-muted);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
-      }
-
-      .table-row {
-        display: grid;
-        grid-template-columns: 100px 1fr 140px 140px 120px;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border-subtle);
-        font-size: 12px;
-        animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
-        transition: background var(--duration-fast), border-color var(--duration-fast);
-      }
-
-      .table-row:nth-child(even) {
-        background: rgba(255, 255, 255, 0.012);
-      }
-
-      .table-row:hover {
-        background: linear-gradient(90deg, rgba(240, 165, 0, 0.06), transparent 50%);
-        border-color: rgba(240, 165, 0, 0.08);
-      }
-
-      .table-row:last-child { border-bottom: none; }
-
-      .col-id {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--amber);
-      }
-
-      .col-cat,
-      .col-assignee {
-        font-size: 11px;
-        color: var(--text-secondary);
-        font-family: var(--font-mono);
-      }
-
-      .col-status {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.06em;
-      }
-
-      [data-status="In Progress"].col-status { color: var(--amber); }
-      [data-status="Done"].col-status { color: var(--success); }
-      [data-status="Blocked"].col-status { color: var(--danger); }
-
-      .empty-view {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        min-height: 280px;
-        padding: 30px;
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.12em;
-        color: var(--text-muted);
-        border: 1px solid var(--border);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent);
-      }
-
-      .rich-empty-state {
-        text-align: center;
-      }
-
-      .empty-title {
-        font-family: var(--font-display);
-        font-size: 24px;
-        letter-spacing: 0.08em;
-        color: var(--text-primary);
-      }
-
-      .empty-copy {
-        max-width: 48ch;
-        font-family: var(--font-body);
-        font-size: 13px;
-        line-height: 1.6;
-        letter-spacing: 0;
-        color: var(--text-secondary);
-      }
-
-      .empty-action {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        padding: 10px 14px;
-        border: 1px solid var(--amber-border);
-        background: var(--amber-dim);
-        color: var(--amber);
-        cursor: pointer;
-        transition: all var(--duration-fast);
-      }
-
-      .empty-action:hover {
-        background: var(--amber);
-        color: #000;
-      }
-
-      .empty-icon-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 14px);
-        gap: 6px;
-      }
-
-      .empty-icon-grid span {
-        width: 14px;
-        height: 14px;
-        border: 1px solid var(--border-strong);
-      }
-
-      .empty-icon-grid .active {
-        border-color: var(--amber-border);
-        background: var(--amber-dim);
-        box-shadow: 0 0 12px var(--amber-glow);
-      }
-
-      .empty-terminal {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        width: 140px;
-      }
-
-      .empty-terminal span {
-        display: block;
-        height: 6px;
-        background: rgba(255, 255, 255, 0.06);
-      }
-
-      .empty-terminal .long {
-        background: linear-gradient(90deg, rgba(240, 165, 0, 0.4), rgba(240, 165, 0, 0.08));
-      }
-
-      @media (max-width: 1180px) {
-        .hero-panel,
-        .dashboard-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      @media (max-width: 880px) {
-        .sidebar {
-          width: 166px;
-        }
-
-        .table-head,
-        .table-row {
-          grid-template-columns: 90px 1fr 120px 120px 100px;
-        }
-      }
-    `
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+    }
+  `]
 })
 export class AppComponent implements OnInit, AfterViewInit {
   roles = ['admin', 'viewer', 'owner'] as const;
@@ -1388,15 +942,11 @@ export class AppComponent implements OnInit, AfterViewInit {
   tasks = signal<Task[]>([]);
   insights = signal<Insight[]>([]);
   standup = signal<string | null>(null);
-  viewError = signal<string | null>(null);
   currentTime = signal<string>('');
   metricsList = signal<{ value: string; label: string; pct: number }[]>([]);
 
   today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
   }).toUpperCase();
 
   roleUsers: Record<string, { name: string }> = {
@@ -1407,106 +957,64 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   constructor(private http: HttpClient) {}
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.startClock();
     this.checkBackend();
     this.loadTasks();
   }
 
-  ngAfterViewInit(): void {
+  ngAfterViewInit() {
     setTimeout(() => this.loaded.set(true), 50);
   }
 
-  private startClock(): void {
+  private startClock() {
     const tick = () => {
       const now = new Date();
       this.currentTime.set(
-        now.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        })
+        now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
       );
     };
-
     tick();
     setInterval(tick, 1000);
   }
 
-  checkBackend(): void {
+  checkBackend() {
     this.http.get('/chat/history?limit=1').subscribe({
       next: () => this.backendOnline.set(true),
       error: () => this.backendOnline.set(false)
     });
   }
 
-  loadTasks(): void {
+  loadTasks() {
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
       next: (res) => {
         this.insights.set(res.insights ?? []);
         this.backendOnline.set(true);
       },
-      error: () => undefined
+      error: () => {}
     });
 
     this.http.get('/chat/history?limit=1').subscribe({
       next: () => {
         this.tasks.set([
-          {
-            id: 'task-0031',
-            title: 'OAuth migration — finalize token refresh flow',
-            status: 'In Progress',
-            category: 'Work → Engineering',
-            assignee: { name: 'Jane' }
-          },
-          {
-            id: 'task-0027',
-            title: 'Ship new dashboard layout v2',
-            status: 'Done',
-            category: 'Work → Design',
-            assignee: { name: 'Alex' }
-          },
-          {
-            id: 'task-0044',
-            title: 'API Refactor — v2 endpoints',
-            status: 'In Progress',
-            category: 'Work → Engineering',
-            assignee: { name: 'Dave' }
-          },
-          {
-            id: 'task-0038',
-            title: 'Patch XSS vulnerability in comments',
-            status: 'Done',
-            category: 'Work → Security',
-            assignee: { name: 'Jane' }
-          },
-          {
-            id: 'task-0041',
-            title: 'Database migration — schema v3',
-            status: 'Blocked',
-            category: 'Work → Infra',
-            assignee: { name: 'Bob' }
-          },
-          {
-            id: 'task-0019',
-            title: 'Write unit tests for auth module',
-            status: 'To Do',
-            category: 'Work → Engineering',
-            assignee: { name: 'Alex' }
-          }
+          { id: 'task-0031', title: 'OAuth migration — finalize token refresh flow', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Jane' } },
+          { id: 'task-0027', title: 'Ship new dashboard layout v2', status: 'Done', category: 'Work → Design', assignee: { name: 'Alex' } },
+          { id: 'task-0044', title: 'API Refactor — v2 endpoints', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Dave' } },
+          { id: 'task-0038', title: 'Patch XSS vulnerability in comments', status: 'Done', category: 'Work → Security', assignee: { name: 'Jane' } },
+          { id: 'task-0041', title: 'Database migration — schema v3', status: 'Blocked', category: 'Work → Infra', assignee: { name: 'Bob' } },
+          { id: 'task-0019', title: 'Write unit tests for auth module', status: 'To Do', category: 'Work → Engineering', assignee: { name: 'Alex' } }
         ]);
         this.updateMetrics();
       }
     });
   }
 
-  private updateMetrics(): void {
-    const currentTasks = this.tasks();
-    const total = currentTasks.length;
-    const inProgress = currentTasks.filter((task) => task.status === 'In Progress').length;
-    const done = currentTasks.filter((task) => task.status === 'Done').length;
-    const blocked = currentTasks.filter((task) => task.status === 'Blocked').length;
+  private updateMetrics() {
+    const t = this.tasks();
+    const total = t.length;
+    const inProgress = t.filter((x) => x.status === 'In Progress').length;
+    const done = t.filter((x) => x.status === 'Done').length;
+    const blocked = t.filter((x) => x.status === 'Blocked').length;
     this.metricsList.set([
       { value: String(total), label: 'TOTAL TASKS', pct: 100 },
       { value: String(inProgress), label: 'IN PROGRESS', pct: total ? (inProgress / total) * 100 : 0 },
@@ -1515,92 +1023,44 @@ export class AppComponent implements OnInit, AfterViewInit {
     ]);
   }
 
-  loadInsights(): void {
-    this.viewError.set(null);
+  loadInsights() {
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
       next: (res) => {
         this.insights.set(res.insights ?? []);
         this.backendOnline.set(true);
       },
-      error: (error) => {
-        this.backendOnline.set(true);
-        this.viewError.set(this.toUiError(error, 'Unable to load insights.'));
-      }
+      error: () => {}
     });
   }
 
-  loadStandup(): void {
+  loadStandup() {
     this.standup.set(null);
-    this.viewError.set(null);
     this.http.get<{ markdown: string }>('/reports/standup').subscribe({
-      next: (res) => this.standup.set(this.mdToHtml(res.markdown)),
-      error: (error) => {
-        this.backendOnline.set(true);
-        this.viewError.set(this.toUiError(error, 'Unable to generate standup.'));
-      }
+      next: (res) => this.standup.set(this.mdToHtml(res.markdown))
     });
   }
 
-  setView(view: string): void {
+  setView(view: string) {
     this.activeView.set(view);
   }
 
-  switchRole(role: string): void {
+  switchRole(role: string) {
     this.currentRole.set(role);
     localStorage.setItem('mockUser', role);
     this.loadTasks();
     this.insights.set([]);
   }
 
-  onTaskSelected(taskId: string): void {
+  onTaskSelected(taskId: string) {
     console.log('Task selected:', taskId);
   }
 
-  currentFocusTask(): Task | null {
-    return (
-      this.tasks().find((task) => task.status === 'Blocked') ??
-      this.tasks().find((task) => task.status === 'In Progress') ??
-      this.tasks()[0] ??
-      null
-    );
-  }
-
   private mdToHtml(md: string): string {
-    if (!md) {
-      return '';
-    }
-
+    if (!md) return '';
     return md
       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
       .replace(/\n{2,}/g, '<br><br>');
-  }
-
-  private toUiError(error: unknown, fallback: string): string {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'status' in error &&
-      Number((error as { status?: number }).status) === 429
-    ) {
-      return 'Gemini quota exceeded. Try again later or switch to a different API key/project.';
-    }
-
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'error' in error &&
-      typeof (error as { error?: unknown }).error === 'object' &&
-      (error as { error?: { message?: string | string[] } }).error?.message
-    ) {
-      const message = (error as { error?: { message?: string | string[] } }).error?.message;
-      const text = Array.isArray(message) ? message.join(' ') : message;
-      if (text && !/quota|rate limit|too many requests/i.test(text)) {
-        return text;
-      }
-    }
-
-    return fallback;
   }
 }
