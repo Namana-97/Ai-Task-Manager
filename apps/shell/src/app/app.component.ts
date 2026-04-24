@@ -146,7 +146,13 @@ interface Task {
         </header>
 
         <div class="metrics-bar" *ngIf="activeView() === 'dashboard'">
-          <div class="metric" *ngFor="let m of metricsList(); let i = index" [style.animation-delay]="(i * 80) + 'ms'">
+          <div
+            class="metric"
+            *ngFor="let m of metricsList(); let i = index"
+            [class.metric-primary]="i === 0"
+            [class.metric-emphasis]="m.label === 'IN PROGRESS'"
+            [class.metric-alert]="m.label === 'BLOCKED'"
+            [style.animation-delay]="(i * 80) + 'ms'">
             <span class="metric-num">{{ m.value }}</span>
             <span class="metric-label">{{ m.label }}</span>
             <div class="metric-bar-fill" [style.width]="m.pct + '%'"></div>
@@ -155,10 +161,34 @@ interface Task {
 
         <div class="content">
           <ng-container *ngIf="activeView() === 'dashboard'">
+            <section class="hero-panel">
+              <div class="hero-copy">
+                <span class="hero-kicker">PRIMARY FOCUS</span>
+                <h1 class="hero-title">EXECUTION COMMAND DECK</h1>
+                <p class="hero-text">
+                  Prioritize active delivery, isolate blockers fast, and monitor AI-generated signals without
+                  losing the operational thread.
+                </p>
+              </div>
+
+              <div class="hero-focus" *ngIf="currentFocusTask() as focus">
+                <span class="hero-focus-label">WATCH ITEM</span>
+                <span class="hero-focus-id">{{ focus.id }}</span>
+                <strong class="hero-focus-title">{{ focus.title }}</strong>
+                <div class="hero-focus-meta">
+                  <span class="hero-focus-status" [attr.data-status]="focus.status">{{ focus.status }}</span>
+                  <span class="hero-focus-category">{{ focus.category }}</span>
+                </div>
+              </div>
+            </section>
+
             <div class="dashboard-grid">
               <section class="panel task-panel">
                 <div class="panel-header">
-                  <span class="panel-title">ACTIVE TASKS</span>
+                  <div class="panel-heading">
+                    <span class="panel-title">ACTIVE TASKS</span>
+                    <span class="panel-subtitle">Live work ordered for fast scan and status recognition.</span>
+                  </div>
                   <span class="panel-count">{{ tasks().length }}</span>
                 </div>
                 <div class="task-feed">
@@ -183,7 +213,10 @@ interface Task {
 
               <section class="panel insights-preview-panel">
                 <div class="panel-header">
-                  <span class="panel-title">SIGNAL FEED</span>
+                  <div class="panel-heading">
+                    <span class="panel-title">SIGNAL FEED</span>
+                    <span class="panel-subtitle">Anomalies, warnings, and generated operational guidance.</span>
+                  </div>
                   <button class="panel-action" (click)="setView('insights'); loadInsights()">VIEW ALL →</button>
                 </div>
                 <div class="signal-list">
@@ -201,10 +234,14 @@ interface Task {
 
           <ng-container *ngIf="activeView() === 'insights'">
             <div class="view-header">
-              <h1 class="view-title">INTELLIGENCE FEED</h1>
+              <div>
+                <span class="view-kicker">INTELLIGENCE</span>
+                <h1 class="view-title">INTELLIGENCE FEED</h1>
+                <p class="view-subtitle">Operational alerts, trend changes, and model-generated signal summaries.</p>
+              </div>
               <button class="refresh-btn" (click)="loadInsights()">REFRESH</button>
             </div>
-            <div class="insights-grid">
+            <div class="insights-grid" *ngIf="insights().length">
               <div class="insight-card" *ngFor="let ins of insights(); let i = index" [attr.data-severity]="ins.severity" [style.animation-delay]="(i * 60) + 'ms'">
                 <div class="insight-card-top">
                   <span class="insight-type">{{ ins.type | uppercase }}</span>
@@ -221,29 +258,59 @@ interface Task {
                 </div>
               </div>
             </div>
-            <div class="empty-view" *ngIf="!insights().length && viewError()">
-              <span class="empty-label">{{ viewError() }}</span>
+            <div class="empty-view rich-empty-state" *ngIf="!insights().length">
+              <div class="empty-icon-grid">
+                <span></span><span></span><span></span><span class="active"></span>
+              </div>
+              <span class="empty-title">{{ viewError() ? 'SIGNAL FEED UNAVAILABLE' : 'NO LIVE SIGNALS YET' }}</span>
+              <p class="empty-copy">
+                {{
+                  viewError()
+                    ?? 'Pull the latest insights to populate anomaly tracking, velocity changes, and risk signals.'
+                }}
+              </p>
+              <button class="empty-action" (click)="loadInsights()">REFRESH FEED</button>
             </div>
           </ng-container>
 
           <ng-container *ngIf="activeView() === 'standup'">
             <div class="view-header">
-              <h1 class="view-title">DAILY STANDUP</h1>
+              <div>
+                <span class="view-kicker">REPORTING</span>
+                <h1 class="view-title">DAILY STANDUP</h1>
+                <p class="view-subtitle">Generate a concise status report from the current task and retrieval context.</p>
+              </div>
               <button class="refresh-btn" (click)="loadStandup()">GENERATE</button>
             </div>
             <div class="standup-card" *ngIf="standup(); else noStandup">
               <div class="standup-content" [innerHTML]="standup()"></div>
             </div>
             <ng-template #noStandup>
-              <div class="empty-view">
-                <span class="empty-label">{{ viewError() ?? 'CLICK GENERATE TO PULL TODAY\\'S STANDUP' }}</span>
+              <div class="empty-view rich-empty-state standup-empty-state">
+                <div class="empty-terminal">
+                  <span></span>
+                  <span></span>
+                  <span class="long"></span>
+                </div>
+                <span class="empty-title">{{ viewError() ? 'STANDUP GENERATION BLOCKED' : 'READY TO GENERATE' }}</span>
+                <p class="empty-copy">
+                  {{
+                    viewError()
+                      ?? 'Generate a daily brief with completions, in-flight work, blockers, and upcoming focus areas.'
+                  }}
+                </p>
+                <button class="empty-action" (click)="loadStandup()">GENERATE STANDUP</button>
               </div>
             </ng-template>
           </ng-container>
 
           <ng-container *ngIf="activeView() === 'tasks'">
             <div class="view-header">
-              <h1 class="view-title">TASK REGISTRY</h1>
+              <div>
+                <span class="view-kicker">REGISTRY</span>
+                <h1 class="view-title">TASK REGISTRY</h1>
+                <p class="view-subtitle">Structured task ledger with stronger row emphasis and status readability.</p>
+              </div>
             </div>
             <div class="task-table">
               <div class="table-head">
@@ -598,6 +665,7 @@ interface Task {
         display: flex;
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent);
       }
 
       .metric {
@@ -613,6 +681,18 @@ interface Task {
       .metric:last-child { border-right: none; }
 
       .metric:hover { background: var(--bg-surface); }
+
+      .metric-primary {
+        background: linear-gradient(180deg, rgba(240, 165, 0, 0.09), transparent 85%);
+      }
+
+      .metric-emphasis .metric-num {
+        color: var(--amber-bright);
+      }
+
+      .metric-alert .metric-num {
+        color: #ff8b6e;
+      }
 
       .metric-num {
         display: block;
@@ -648,7 +728,107 @@ interface Task {
       .content {
         flex: 1;
         overflow-y: auto;
-        padding: 20px 24px;
+        padding: 24px;
+      }
+
+      .hero-panel {
+        display: grid;
+        grid-template-columns: 1.4fr 0.9fr;
+        gap: 16px;
+        margin-bottom: 18px;
+        padding: 22px 24px;
+        border: 1px solid var(--border-strong);
+        background:
+          radial-gradient(circle at top right, rgba(240, 165, 0, 0.08), transparent 40%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
+      }
+
+      .hero-kicker,
+      .view-kicker {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        color: var(--amber);
+        margin-bottom: 8px;
+      }
+
+      .hero-title {
+        font-family: var(--font-display);
+        font-size: 44px;
+        line-height: 0.92;
+        letter-spacing: 0.04em;
+        color: var(--text-primary);
+        margin-bottom: 10px;
+      }
+
+      .hero-text {
+        max-width: 62ch;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .hero-focus {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 16px;
+        border: 1px solid var(--amber-border);
+        background: rgba(240, 165, 0, 0.05);
+      }
+
+      .hero-focus-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        color: var(--text-muted);
+      }
+
+      .hero-focus-id {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--amber);
+      }
+
+      .hero-focus-title {
+        font-size: 18px;
+        font-weight: 500;
+        line-height: 1.3;
+        color: var(--text-primary);
+      }
+
+      .hero-focus-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .hero-focus-status,
+      .task-status-tag,
+      .col-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+      }
+
+      .hero-focus-status::before,
+      .task-status-tag::before,
+      .col-status::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 8px currentColor;
+      }
+
+      .hero-focus-category {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-secondary);
       }
 
       .dashboard-grid {
@@ -675,6 +855,12 @@ interface Task {
         flex-shrink: 0;
       }
 
+      .panel-heading {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
       .panel-title {
         font-family: var(--font-mono);
         font-size: 9px;
@@ -682,10 +868,17 @@ interface Task {
         color: var(--text-muted);
       }
 
+      .panel-subtitle {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+
       .panel-count {
         font-family: var(--font-mono);
-        font-size: 11px;
+        font-size: 15px;
         color: var(--amber);
+        min-width: 28px;
+        text-align: right;
       }
 
       .panel-action {
@@ -694,13 +887,16 @@ interface Task {
         letter-spacing: 0.08em;
         color: var(--amber);
         background: transparent;
-        border: none;
+        border: 1px solid transparent;
         cursor: pointer;
-        padding: 0;
-        transition: opacity var(--duration-fast);
+        padding: 6px 8px;
+        transition: all var(--duration-fast);
       }
 
-      .panel-action:hover { opacity: 0.7; }
+      .panel-action:hover {
+        border-color: var(--amber-border);
+        background: var(--amber-dim);
+      }
 
       .task-feed {
         overflow-y: auto;
@@ -711,13 +907,16 @@ interface Task {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 16px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border-subtle);
         animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
-        transition: background var(--duration-fast);
+        transition: background var(--duration-fast), border-color var(--duration-fast);
       }
 
-      .task-row:hover { background: var(--bg-hover); }
+      .task-row:hover {
+        background: linear-gradient(90deg, rgba(240, 165, 0, 0.05), transparent 45%);
+        border-color: rgba(240, 165, 0, 0.08);
+      }
 
       .task-row:last-child { border-bottom: none; }
 
@@ -751,8 +950,8 @@ interface Task {
 
       .task-title {
         display: block;
-        font-size: 12px;
-        font-weight: 400;
+        font-size: 13px;
+        font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -782,11 +981,12 @@ interface Task {
 
       .task-status-tag {
         font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.06em;
-        padding: 2px 6px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        padding: 4px 8px;
         border: 1px solid var(--border);
         color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.02);
       }
 
       [data-status="In Progress"].task-status-tag {
@@ -824,12 +1024,14 @@ interface Task {
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        padding: 10px 16px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border-subtle);
         transition: background var(--duration-fast);
       }
 
-      .signal-row:hover { background: var(--bg-hover); }
+      .signal-row:hover {
+        background: linear-gradient(90deg, rgba(240, 165, 0, 0.05), transparent 60%);
+      }
 
       .signal-row:last-child { border-bottom: none; }
 
@@ -862,15 +1064,21 @@ interface Task {
         align-items: center;
         justify-content: space-between;
         margin-bottom: 20px;
-        padding-bottom: 16px;
+        padding-bottom: 18px;
         border-bottom: 1px solid var(--border);
       }
 
       .view-title {
         font-family: var(--font-display);
-        font-size: 32px;
+        font-size: 38px;
         letter-spacing: 0.05em;
         color: var(--text-primary);
+      }
+
+      .view-subtitle {
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--text-secondary);
       }
 
       .refresh-btn {
@@ -1003,6 +1211,7 @@ interface Task {
       .task-table {
         background: var(--bg-surface);
         border: 1px solid var(--border);
+        overflow: hidden;
       }
 
       .table-head {
@@ -1014,19 +1223,27 @@ interface Task {
         font-size: 9px;
         letter-spacing: 0.12em;
         color: var(--text-muted);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
       }
 
       .table-row {
         display: grid;
         grid-template-columns: 100px 1fr 140px 140px 120px;
-        padding: 10px 16px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border-subtle);
         font-size: 12px;
         animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
-        transition: background var(--duration-fast);
+        transition: background var(--duration-fast), border-color var(--duration-fast);
       }
 
-      .table-row:hover { background: var(--bg-hover); }
+      .table-row:nth-child(even) {
+        background: rgba(255, 255, 255, 0.012);
+      }
+
+      .table-row:hover {
+        background: linear-gradient(90deg, rgba(240, 165, 0, 0.06), transparent 50%);
+        border-color: rgba(240, 165, 0, 0.08);
+      }
 
       .table-row:last-child { border-bottom: none; }
 
@@ -1055,17 +1272,94 @@ interface Task {
 
       .empty-view {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 200px;
+        gap: 10px;
+        min-height: 280px;
+        padding: 30px;
         font-family: var(--font-mono);
         font-size: 11px;
         letter-spacing: 0.12em;
         color: var(--text-muted);
         border: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent);
+      }
+
+      .rich-empty-state {
+        text-align: center;
+      }
+
+      .empty-title {
+        font-family: var(--font-display);
+        font-size: 24px;
+        letter-spacing: 0.08em;
+        color: var(--text-primary);
+      }
+
+      .empty-copy {
+        max-width: 48ch;
+        font-family: var(--font-body);
+        font-size: 13px;
+        line-height: 1.6;
+        letter-spacing: 0;
+        color: var(--text-secondary);
+      }
+
+      .empty-action {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        padding: 10px 14px;
+        border: 1px solid var(--amber-border);
+        background: var(--amber-dim);
+        color: var(--amber);
+        cursor: pointer;
+        transition: all var(--duration-fast);
+      }
+
+      .empty-action:hover {
+        background: var(--amber);
+        color: #000;
+      }
+
+      .empty-icon-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 14px);
+        gap: 6px;
+      }
+
+      .empty-icon-grid span {
+        width: 14px;
+        height: 14px;
+        border: 1px solid var(--border-strong);
+      }
+
+      .empty-icon-grid .active {
+        border-color: var(--amber-border);
+        background: var(--amber-dim);
+        box-shadow: 0 0 12px var(--amber-glow);
+      }
+
+      .empty-terminal {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 140px;
+      }
+
+      .empty-terminal span {
+        display: block;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .empty-terminal .long {
+        background: linear-gradient(90deg, rgba(240, 165, 0, 0.4), rgba(240, 165, 0, 0.08));
       }
 
       @media (max-width: 1180px) {
+        .hero-panel,
         .dashboard-grid {
           grid-template-columns: 1fr;
         }
@@ -1260,6 +1554,15 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   onTaskSelected(taskId: string): void {
     console.log('Task selected:', taskId);
+  }
+
+  currentFocusTask(): Task | null {
+    return (
+      this.tasks().find((task) => task.status === 'Blocked') ??
+      this.tasks().find((task) => task.status === 'In Progress') ??
+      this.tasks()[0] ??
+      null
+    );
   }
 
   private mdToHtml(md: string): string {

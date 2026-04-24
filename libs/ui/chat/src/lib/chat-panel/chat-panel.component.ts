@@ -9,7 +9,7 @@ import { ChatChunk, ChatMessage } from '../models';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <button class="chat-fab" type="button" (click)="toggle()" aria-label="Open chat">
+    <button class="chat-fab" [class.panel-open]="open()" type="button" (click)="toggle()" aria-label="Open chat">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         <path d="M8 10h8M8 14h5M5 19l2.5-3H19a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2v3Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"/>
       </svg>
@@ -95,6 +95,27 @@ import { ChatChunk, ChatMessage } from '../models';
         transform: translateX(100%);
         transition: transform var(--duration-slow) var(--ease-sharp);
         z-index: 200;
+        box-shadow: -22px 0 40px rgba(0, 0, 0, 0.42);
+      }
+
+      .chat-panel::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: linear-gradient(180deg, transparent, var(--amber-border), transparent);
+      }
+
+      .chat-panel::after {
+        content: '';
+        position: absolute;
+        left: -18px;
+        top: 74px;
+        width: 18px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--amber-border));
       }
 
       .chat-panel.open { transform: translateX(0); }
@@ -117,6 +138,10 @@ import { ChatChunk, ChatMessage } from '../models';
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
       }
 
+      .chat-fab.panel-open {
+        right: 412px;
+      }
+
       .chat-fab:hover {
         background: var(--amber-dim);
         box-shadow: 0 4px 24px var(--amber-glow);
@@ -129,6 +154,7 @@ import { ChatChunk, ChatMessage } from '../models';
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
       }
 
       .chat-header-title {
@@ -166,6 +192,7 @@ import { ChatChunk, ChatMessage } from '../models';
       .header-btn:hover {
         border-color: var(--amber-border);
         color: var(--amber);
+        background: var(--amber-dim);
       }
 
       .messages {
@@ -262,6 +289,7 @@ import { ChatChunk, ChatMessage } from '../models';
       .source-card:hover {
         border-color: var(--amber-border);
         background: var(--amber-dim);
+        transform: translateY(-1px);
       }
 
       .source-id {
@@ -315,6 +343,7 @@ import { ChatChunk, ChatMessage } from '../models';
         border-color: var(--amber-border);
         color: var(--amber);
         background: var(--amber-dim);
+        transform: translateY(-1px);
       }
 
       .chat-input-area {
@@ -364,6 +393,7 @@ import { ChatChunk, ChatMessage } from '../models';
       .send-btn:hover {
         background: var(--amber);
         color: #000;
+        box-shadow: 0 0 16px var(--amber-glow);
       }
 
       .send-btn:disabled {
@@ -374,6 +404,10 @@ import { ChatChunk, ChatMessage } from '../models';
       @media (max-width: 640px) {
         .chat-panel {
           width: 100vw;
+        }
+
+        .chat-fab.panel-open {
+          right: 28px;
         }
 
         .suggested-prompts {
