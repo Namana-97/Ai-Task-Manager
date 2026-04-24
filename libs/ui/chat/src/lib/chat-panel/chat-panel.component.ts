@@ -498,7 +498,11 @@ export class ChatPanelComponent {
     this.messages.update((current) =>
       current.map((entry) =>
         entry.id === messageId
-          ? { ...entry, content: 'Failed to reach backend. Is the API running?', streaming: false }
+          ? {
+              ...entry,
+              content: 'The request failed before the assistant could respond.',
+              streaming: false
+            }
           : entry
       )
     );

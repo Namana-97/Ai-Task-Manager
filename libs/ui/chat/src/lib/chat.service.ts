@@ -52,7 +52,7 @@ export class ChatService {
         return;
       }
 
-      subject.next({ type: 'error', error: 'Failed to reach backend. Is the API running?' });
+      subject.next({ type: 'error', error: getDisplayErrorMessage(error) });
       subject.complete();
     }
   }
@@ -84,7 +84,7 @@ export class ChatService {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(await readErrorMessage(response, 'Task action failed.'));
     }
 
     const payload = (await response.json()) as { message?: string };
@@ -107,7 +107,7 @@ export class ChatService {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(await readErrorMessage(response, 'Chat request failed.'));
     }
 
     const contentType = response.headers.get('content-type') ?? '';
@@ -214,4 +214,65 @@ function isNetworkError(error: unknown): boolean {
   }
 
   return /Failed to fetch|NetworkError|HTTP 0/i.test(error.message);
+}
+
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const defaultMessage = mapStatusToMessage(response.status, fallback);
+
+  try {
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+      const payload = (await response.json()) as { message?: string | string[]; error?: string };
+      const rawMessage = Array.isArray(payload.message)
+        ? payload.message.join(' ')
+        : payload.message ?? payload.error;
+      return normalizeErrorMessage(response.status, rawMessage, defaultMessage);
+    }
+
+    const text = await response.text();
+    return normalizeErrorMessage(response.status, text, defaultMessage);
+  } catch {
+    return defaultMessage;
+  }
+}
+
+function normalizeErrorMessage(status: number, message: string | undefined, fallback: string): string {
+  const trimmed = message?.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  if (status === 429 || /quota|rate limit|too many requests/i.test(trimmed)) {
+    return 'Gemini quota exceeded. Try again later or switch to a different API key/project.';
+  }
+
+  if (trimmed.length > 220) {
+    return fallback;
+  }
+
+  return trimmed;
+}
+
+function mapStatusToMessage(status: number, fallback: string): string {
+  if (status === 429) {
+    return 'Gemini quota exceeded. Try again later or switch to a different API key/project.';
+  }
+
+  if (status >= 500) {
+    return 'The backend hit an internal error while processing this request.';
+  }
+
+  if (status === 401 || status === 403) {
+    return 'You are not authorized to perform this action.';
+  }
+
+  return fallback;
+}
+
+function getDisplayErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return 'Failed to reach backend. Is the API running?';
 }

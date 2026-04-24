@@ -221,6 +221,9 @@ interface Task {
                 </div>
               </div>
             </div>
+            <div class="empty-view" *ngIf="!insights().length && viewError()">
+              <span class="empty-label">{{ viewError() }}</span>
+            </div>
           </ng-container>
 
           <ng-container *ngIf="activeView() === 'standup'">
@@ -233,7 +236,7 @@ interface Task {
             </div>
             <ng-template #noStandup>
               <div class="empty-view">
-                <span class="empty-label">CLICK GENERATE TO PULL TODAY'S STANDUP</span>
+                <span class="empty-label">{{ viewError() ?? 'CLICK GENERATE TO PULL TODAY\\'S STANDUP' }}</span>
               </div>
             </ng-template>
           </ng-container>
@@ -1091,6 +1094,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   tasks = signal<Task[]>([]);
   insights = signal<Insight[]>([]);
   standup = signal<string | null>(null);
+  viewError = signal<string | null>(null);
   currentTime = signal<string>('');
   metricsList = signal<{ value: string; label: string; pct: number }[]>([]);
 
@@ -1218,20 +1222,28 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   loadInsights(): void {
+    this.viewError.set(null);
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
       next: (res) => {
         this.insights.set(res.insights ?? []);
         this.backendOnline.set(true);
       },
-      error: () => undefined
+      error: (error) => {
+        this.backendOnline.set(true);
+        this.viewError.set(this.toUiError(error, 'Unable to load insights.'));
+      }
     });
   }
 
   loadStandup(): void {
     this.standup.set(null);
+    this.viewError.set(null);
     this.http.get<{ markdown: string }>('/reports/standup').subscribe({
       next: (res) => this.standup.set(this.mdToHtml(res.markdown)),
-      error: () => undefined
+      error: (error) => {
+        this.backendOnline.set(true);
+        this.viewError.set(this.toUiError(error, 'Unable to generate standup.'));
+      }
     });
   }
 
@@ -1260,5 +1272,32 @@ export class AppComponent implements OnInit, AfterViewInit {
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
       .replace(/\n{2,}/g, '<br><br>');
+  }
+
+  private toUiError(error: unknown, fallback: string): string {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'status' in error &&
+      Number((error as { status?: number }).status) === 429
+    ) {
+      return 'Gemini quota exceeded. Try again later or switch to a different API key/project.';
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'error' in error &&
+      typeof (error as { error?: unknown }).error === 'object' &&
+      (error as { error?: { message?: string | string[] } }).error?.message
+    ) {
+      const message = (error as { error?: { message?: string | string[] } }).error?.message;
+      const text = Array.isArray(message) ? message.join(' ') : message;
+      if (text && !/quota|rate limit|too many requests/i.test(text)) {
+        return text;
+      }
+    }
+
+    return fallback;
   }
 }

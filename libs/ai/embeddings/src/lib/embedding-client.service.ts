@@ -16,7 +16,8 @@ export class EmbeddingClient {
   private readonly openaiClient = process.env.EMBEDDING_API_KEY
     ? new OpenAI({ apiKey: process.env.EMBEDDING_API_KEY })
     : null;
-  private localPipeline: any = null;
+  private static localPipeline: any = null;
+  private static localPipelinePromise: Promise<any> | null = null;
 
   async embed(texts: string[]): Promise<number[][]> {
     const batches: string[][] = [];
@@ -73,14 +74,23 @@ export class EmbeddingClient {
     try {
       const { pipeline } = await import('@xenova/transformers');
 
-      if (!this.localPipeline) {
+      if (!EmbeddingClient.localPipelinePromise) {
         this.logger.log(`Loading local embedding model (${this.model})...`);
-        this.localPipeline = await pipeline('feature-extraction', this.model);
-        this.logger.log('Local model loaded.');
+        EmbeddingClient.localPipelinePromise = pipeline('feature-extraction', this.model)
+          .then((loadedPipeline) => {
+            EmbeddingClient.localPipeline = loadedPipeline;
+            this.logger.log('Local model loaded.');
+            return loadedPipeline;
+          })
+          .catch((error) => {
+            EmbeddingClient.localPipelinePromise = null;
+            throw error;
+          });
       }
 
       const results: number[][] = [];
-      const localPipeline = this.localPipeline;
+      const localPipeline =
+        EmbeddingClient.localPipeline ?? (await EmbeddingClient.localPipelinePromise);
       for (const text of batch) {
         const output = await localPipeline(text, { pooling: 'mean', normalize: true });
         results.push(Array.from(output.data).slice(0, this.dimensions) as number[]);
