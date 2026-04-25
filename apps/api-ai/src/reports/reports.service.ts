@@ -59,16 +59,16 @@ function renderStandupMarkdown(grouped: ReturnType<typeof groupStandupTasks>): s
       : '- No additional notes to report at this time.';
 
   return [
-    '## ✅ Done',
+    '## Done',
     formatTaskList(grouped.completed),
     '',
-    '## 🔄 In Progress',
+    '## In Progress',
     formatTaskList(grouped.started),
     '',
-    '## 🚫 Blocked',
+    '## Blocked',
     formatTaskList(grouped.blocked),
     '',
-    '## 💬 Notes',
+    '## Notes',
     notes
   ].join('\n');
 }

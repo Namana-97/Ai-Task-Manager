@@ -35,9 +35,9 @@ import { AuthService } from './auth.service';
 
         <div class="login-hint">
           <span>Seed users:</span>
-          <code>jordan / jordan123</code>
-          <code>taylor / taylor123</code>
-          <code>alex / alex123</code>
+          <code>jordan / jordan123 — Admin</code>
+          <code>taylor / taylor123 — Owner</code>
+          <code>alex / alex123 — Viewer</code>
         </div>
       </div>
     </div>
@@ -48,18 +48,23 @@ import { AuthService } from './auth.service';
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg-void);
+      background:
+        radial-gradient(circle at top, rgba(245, 185, 66, 0.1), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), transparent 26%),
+        var(--bg-void);
       color: var(--text-primary);
-      padding: 24px;
+      padding: 32px;
     }
     .login-panel {
       width: min(420px, 100%);
       border: 1px solid var(--border);
       background: var(--bg-surface);
-      padding: 24px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-panel);
+      padding: 32px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 22px;
     }
     .login-brand {
       display: flex;
@@ -68,14 +73,18 @@ import { AuthService } from './auth.service';
     }
     .login-title {
       font-family: var(--font-display);
-      font-size: 40px;
-      letter-spacing: 0.06em;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     .login-subtitle {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.12em;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       color: var(--text-secondary);
+      text-transform: uppercase;
     }
     .login-form {
       display: flex;
@@ -85,33 +94,43 @@ import { AuthService } from './auth.service';
     .login-label {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      font-family: var(--font-mono);
-      font-size: 10px;
+      gap: 8px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
       letter-spacing: 0.08em;
       color: var(--text-secondary);
+      text-transform: uppercase;
     }
     .login-label input {
       border: 1px solid var(--border);
       background: var(--bg-elevated);
       color: var(--text-primary);
-      padding: 10px 12px;
+      padding: 14px 16px;
       font: inherit;
       outline: none;
+      border-radius: var(--radius-md);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
     }
     .login-label input:focus {
       border-color: var(--amber-border);
+      box-shadow: 0 0 0 3px rgba(245, 185, 66, 0.12);
     }
     .login-button {
       border: 1px solid var(--amber-border);
-      background: var(--amber-dim);
-      color: var(--amber);
-      padding: 10px 12px;
+      background: var(--amber);
+      color: #0B0F14;
+      padding: 12px 16px;
       cursor: pointer;
-      font-family: var(--font-mono);
-      font-size: 11px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 700;
       letter-spacing: 0.1em;
+      border-radius: 999px;
+      text-transform: uppercase;
+      box-shadow: 0 10px 24px rgba(245, 185, 66, 0.18);
     }
+    .login-button:hover { background: var(--amber-hover); }
     .login-button:disabled {
       opacity: 0.5;
       cursor: default;
@@ -131,8 +150,9 @@ import { AuthService } from './auth.service';
     .login-hint code {
       font-family: var(--font-mono);
       background: var(--bg-elevated);
-      padding: 4px 6px;
+      padding: 6px 8px;
       border: 1px solid var(--border-subtle);
+      border-radius: 999px;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

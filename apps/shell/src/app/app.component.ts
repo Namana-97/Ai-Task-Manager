@@ -361,10 +361,11 @@ interface Task {
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      background: var(--bg-base);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 22%), var(--bg-base);
       border-right: 1px solid var(--border);
       padding: 0;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
+      box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
     }
     .sidebar-top { display: flex; flex-direction: column; }
     .sidebar-bottom { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
@@ -372,8 +373,8 @@ interface Task {
     .logo {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 20px 16px;
+      gap: 12px;
+      padding: 24px 20px;
       border-bottom: 1px solid var(--border);
     }
     .logo-mark {
@@ -386,8 +387,9 @@ interface Task {
     .logo:hover .logo-mark { filter: drop-shadow(0 0 6px var(--amber-glow)); }
     .logo-name {
       font-family: var(--font-display);
-      font-size: 18px;
-      letter-spacing: 0.05em;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
       color: var(--text-primary);
       display: block;
       line-height: 1;
@@ -410,39 +412,40 @@ interface Task {
     .nav {
       display: flex;
       flex-direction: column;
-      padding: 14px 10px;
-      gap: 4px;
+      padding: 18px 14px;
+      gap: 8px;
     }
     .nav-item {
       position: relative;
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 9px 8px;
+      padding: 12px 14px;
       border: none;
       background: transparent;
-      color: rgba(232, 230, 224, 0.48);
-      font-family: var(--font-mono);
-      font-size: 10px;
-      font-weight: 400;
-      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.62);
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
       cursor: pointer;
       text-align: left;
       width: 100%;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
       transition: background-color 180ms var(--ease-sharp), color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp), transform 180ms var(--ease-sharp);
       border: 1px solid transparent;
     }
     .nav-item:hover {
       color: var(--text-primary);
-      background: var(--bg-hover);
-      border-color: var(--border-subtle);
+      background: rgba(245, 185, 66, 0.08);
+      border-color: rgba(245, 185, 66, 0.16);
       transform: translateX(1px);
     }
     .nav-item.active {
       color: var(--amber);
-      background: linear-gradient(90deg, rgba(240, 165, 0, 0.16), rgba(240, 165, 0, 0.04));
+      background: linear-gradient(90deg, rgba(245, 185, 66, 0.18), rgba(245, 185, 66, 0.04));
       border-color: var(--amber-border);
+      box-shadow: inset 0 0 0 1px rgba(245, 185, 66, 0.08), 0 0 24px rgba(245, 185, 66, 0.08);
     }
     .nav-icon { flex-shrink: 0; display: flex; }
     .nav-label { flex: 1; }
@@ -458,9 +461,9 @@ interface Task {
       font-size: 9px;
       background: var(--amber);
       color: #000;
-      padding: 1px 5px;
-      border-radius: var(--radius-sm);
-      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 700;
     }
 
     .role-block { display: flex; flex-direction: column; gap: 6px; }
@@ -470,24 +473,25 @@ interface Task {
       letter-spacing: 0.12em;
       color: var(--text-muted);
     }
-    .role-pills { display: flex; gap: 4px; }
+    .role-pills { display: flex; gap: 6px; }
     .role-pill {
-      font-family: var(--font-mono);
-      font-size: 9px;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 600;
       letter-spacing: 0.06em;
-      padding: 3px 7px;
+      padding: 6px 10px;
       border: 1px solid var(--border);
       background: transparent;
       color: var(--text-secondary);
       cursor: pointer;
-      border-radius: var(--radius-sm);
+      border-radius: 999px;
       transition: all var(--duration-fast) var(--ease-sharp);
     }
     .role-pill:hover { border-color: var(--border-strong); color: var(--text-primary); }
     .role-pill.active {
       border-color: var(--amber);
-      color: var(--amber);
-      background: var(--amber-dim);
+      color: #0B0F14;
+      background: var(--amber);
     }
 
     .user-block {
@@ -496,13 +500,16 @@ interface Task {
       gap: 8px;
     }
     .user-avatar {
-      width: 26px; height: 26px;
+      width: 34px; height: 34px;
       border: 1px solid var(--amber-border);
       color: var(--amber);
       font-family: var(--font-display);
-      font-size: 14px;
+      font-size: 16px;
+      font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
+      border-radius: 10px;
+      background: rgba(245, 185, 66, 0.08);
       transition: box-shadow var(--duration-mid) var(--ease-sharp);
     }
     .user-avatar:hover { box-shadow: 0 0 8px var(--amber-glow); }
@@ -545,32 +552,37 @@ interface Task {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 28px;
+      padding: 18px 32px;
       border-bottom: 1px solid var(--border);
-      background: var(--bg-base);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent), rgba(17, 22, 29, 0.88);
+      backdrop-filter: blur(12px);
       flex-shrink: 0;
     }
     .breadcrumb {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.1em;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
       color: var(--text-muted);
     }
     .breadcrumb-sep { margin: 0 6px; }
     .breadcrumb-current { color: var(--amber); }
-    .header-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
-    .header-right { display: flex; align-items: center; }
+    .header-date { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-family: var(--font-body); letter-spacing: 0.08em; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
 
     .status-chip {
       display: flex;
       align-items: center;
       gap: 5px;
-      font-family: var(--font-mono);
-      font-size: 9px;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 600;
       letter-spacing: 0.1em;
-      padding: 4px 10px;
+      padding: 8px 14px;
       border: 1px solid var(--border);
       color: var(--text-muted);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.02);
     }
     .status-chip.online {
       border-color: rgba(76, 175, 121, 0.3);
@@ -584,9 +596,9 @@ interface Task {
     .status-chip.online .chip-dot { animation: amberPulse 2s infinite; }
     .header-time {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 500;
       color: var(--amber);
-      margin-left: 16px;
       min-width: 58px;
       text-align: right;
     }
@@ -595,16 +607,17 @@ interface Task {
       display: flex;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      background: rgba(17, 22, 29, 0.82);
     }
     .metric {
       flex: 1;
-      padding: 18px 24px 16px;
+      padding: 24px 28px 20px;
       border-right: 1px solid var(--border);
       position: relative;
       overflow: hidden;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
       transition: background-color 180ms var(--ease-sharp), box-shadow 180ms var(--ease-sharp);
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), rgba(17, 22, 29, 0.72);
     }
     .metric:last-child { border-right: none; }
     .metric:hover {
@@ -614,19 +627,21 @@ interface Task {
     .metric-num {
       display: block;
       font-family: var(--font-mono);
-      font-size: 30px;
-      font-weight: 400;
+      font-size: 34px;
+      font-weight: 600;
       color: var(--text-primary);
       line-height: 1;
       animation: countUp 400ms var(--ease-sharp) both;
     }
     .metric-label {
       display: block;
-      font-family: var(--font-mono);
-      font-size: 9px;
-      letter-spacing: 0.12em;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 8px;
+      text-transform: uppercase;
     }
     .metric-bar-fill {
       position: absolute;
@@ -641,46 +656,52 @@ interface Task {
     .content {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 24px;
+      padding: 28px 32px;
     }
 
     .dashboard-grid {
       display: grid;
       grid-template-columns: 1.6fr 1fr;
-      gap: 16px;
+      gap: 24px;
       height: 100%;
     }
 
     .panel {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--bg-surface);
       border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
-      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+      box-shadow: var(--shadow-card);
+      border-radius: var(--radius-md);
+      overflow: hidden;
     }
     .panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
+      padding: 18px 24px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
     .panel-title {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      letter-spacing: 0.15em;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
       color: var(--text-muted);
+      text-transform: uppercase;
     }
     .panel-count {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--amber);
     }
     .panel-action {
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 10px;
+      font-weight: 700;
       letter-spacing: 0.08em;
       color: var(--amber);
       background: transparent;
@@ -696,24 +717,25 @@ interface Task {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 13px 16px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border-subtle);
       animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
       transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp);
       cursor: pointer;
     }
-    .task-row:hover { background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.08); }
+    .task-row:hover { background: rgba(245, 185, 66, 0.06); border-color: rgba(245, 185, 66, 0.12); }
     .task-row.selected {
-      background: linear-gradient(90deg, rgba(240, 165, 0, 0.1), rgba(240, 165, 0, 0.03));
+      background: linear-gradient(90deg, rgba(245, 185, 66, 0.14), rgba(245, 185, 66, 0.04));
       border-color: var(--amber-border);
     }
     .task-row:last-child { border-bottom: none; }
     .task-left { display: flex; align-items: center; gap: 10px; overflow: hidden; }
     .task-status-bar {
-      width: 2px;
-      height: 32px;
+      width: 3px;
+      height: 40px;
       flex-shrink: 0;
       background: var(--text-muted);
+      border-radius: 999px;
     }
     [data-status="In Progress"] .task-status-bar,
     [data-status="In Progress"].task-status-bar { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
@@ -725,8 +747,8 @@ interface Task {
     .task-info { overflow: hidden; }
     .task-title {
       display: block;
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 15px;
+      font-weight: 700;
       color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
@@ -734,30 +756,33 @@ interface Task {
       max-width: 280px;
     }
     .task-sub {
-      font-size: 10px;
-      color: rgba(138, 134, 128, 0.72);
-      font-family: var(--font-mono);
+      font-size: 12px;
+      color: rgba(156, 163, 175, 0.86);
+      font-family: var(--font-body);
     }
     .task-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
     .task-id {
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: 10px;
       color: var(--amber);
       letter-spacing: 0.05em;
     }
     .task-status-tag {
       font-family: var(--font-mono);
-      font-size: 9px;
-      letter-spacing: 0.06em;
-      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 5px 10px;
       border: 1px solid var(--border-strong);
       color: rgba(232, 230, 224, 0.72);
       background: rgba(255, 255, 255, 0.03);
       border-radius: 999px;
     }
-    [data-status="In Progress"].task-status-tag { border-color: var(--amber-border); color: var(--amber); background: rgba(240, 165, 0, 0.12); }
-    [data-status="Done"].task-status-tag { border-color: rgba(76, 175, 121, 0.34); color: var(--success); background: rgba(76, 175, 121, 0.12); }
-    [data-status="Blocked"].task-status-tag { border-color: rgba(224, 82, 82, 0.34); color: var(--danger); background: rgba(224, 82, 82, 0.12); }
+    [data-status="In Progress"].task-status-tag { border-color: var(--amber-border); color: var(--amber); background: rgba(245, 185, 66, 0.14); }
+    [data-status="Done"].task-status-tag { border-color: rgba(34, 197, 94, 0.34); color: var(--success); background: rgba(34, 197, 94, 0.14); }
+    [data-status="Blocked"].task-status-tag { border-color: rgba(239, 68, 68, 0.34); color: var(--danger); background: rgba(239, 68, 68, 0.14); }
+    [data-status="To Do"].task-status-tag,
+    [data-status="Open"].task-status-tag { border-color: rgba(156, 163, 175, 0.22); color: var(--text-secondary); background: rgba(156, 163, 175, 0.08); }
     .task-empty {
       padding: 36px 16px;
       text-align: center;
@@ -775,11 +800,11 @@ interface Task {
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      padding: 10px 16px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border-subtle);
-      transition: background var(--duration-fast);
+      transition: background var(--duration-fast), border-color var(--duration-fast);
     }
-    .signal-row:hover { background: var(--bg-hover); }
+    .signal-row:hover { background: rgba(255, 255, 255, 0.02); border-color: rgba(255, 255, 255, 0.08); }
     .signal-row:last-child { border-bottom: none; }
     .signal-bar {
       width: 2px;
@@ -789,7 +814,7 @@ interface Task {
     [data-severity="info"] .signal-bar { background: var(--info); }
     [data-severity="warning"] .signal-bar { background: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
     [data-severity="critical"] .signal-bar { background: var(--danger); box-shadow: 0 0 6px rgba(224, 82, 82, 0.4); }
-    .signal-msg { font-size: 12px; line-height: 1.5; color: rgba(232, 230, 224, 0.74); }
+    .signal-msg { font-size: 13px; line-height: 1.7; color: rgba(255, 255, 255, 0.78); }
     .signal-empty {
       padding: 24px 16px;
     }
@@ -798,49 +823,55 @@ interface Task {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
-      padding-bottom: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
       border-bottom: 1px solid var(--border);
       gap: 16px;
     }
     .view-title {
       font-family: var(--font-display);
-      font-size: 36px;
-      letter-spacing: 0.05em;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
       color: var(--text-primary);
+      text-transform: uppercase;
     }
     .refresh-btn {
-      font-family: var(--font-mono);
-      font-size: 10px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
       letter-spacing: 0.1em;
-      padding: 7px 16px;
+      padding: 10px 16px;
       border: 1px solid var(--amber-border);
-      background: var(--amber-dim);
-      color: var(--amber);
+      background: var(--amber);
+      color: #0B0F14;
       cursor: pointer;
       transition: transform 160ms var(--ease-sharp), background-color 160ms var(--ease-sharp), color 160ms var(--ease-sharp), opacity 160ms var(--ease-sharp);
+      border-radius: 999px;
+      box-shadow: 0 8px 18px rgba(245, 185, 66, 0.18);
     }
-    .refresh-btn:hover { background: var(--amber); color: #000; transform: translateY(-1px); }
+    .refresh-btn:hover { background: var(--amber-hover); color: #000; transform: translateY(-1px); }
     .refresh-btn:active { transform: translateY(0); }
     .refresh-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .insights-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 12px;
+      gap: 20px;
     }
     .insight-card {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--bg-surface);
       border: 1px solid var(--border);
-      padding: 18px;
+      padding: 24px;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
       transition: border-color 180ms var(--ease-sharp), background-color 180ms var(--ease-sharp), box-shadow 180ms var(--ease-sharp);
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+      box-shadow: var(--shadow-card);
+      border-radius: var(--radius-md);
     }
-    .insight-card:hover { background: var(--bg-elevated); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18); }
-    [data-severity="critical"].insight-card { border-left: 2px solid var(--danger); }
-    [data-severity="warning"].insight-card { border-left: 2px solid var(--amber); }
-    [data-severity="info"].insight-card { border-left: 2px solid var(--info); }
+    .insight-card:hover { background: var(--bg-elevated); box-shadow: var(--shadow-panel); }
+    [data-severity="critical"].insight-card { border-left: 4px solid var(--danger); }
+    [data-severity="warning"].insight-card { border-left: 4px solid var(--amber); }
+    [data-severity="info"].insight-card { border-left: 4px solid var(--info); }
     .insight-card-top {
       display: flex;
       justify-content: space-between;
@@ -860,15 +891,17 @@ interface Task {
     [data-severity="critical"] .insight-sev { color: var(--danger); }
     [data-severity="warning"] .insight-sev { color: var(--amber); }
     [data-severity="info"] .insight-sev { color: var(--info); }
-    .insight-msg { font-size: 12px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 10px; }
+    .insight-msg { font-size: 13px; line-height: 1.7; color: rgba(255, 255, 255, 0.8); margin-bottom: 12px; }
     .insight-tasks { display: flex; gap: 4px; flex-wrap: wrap; }
     .task-ref {
       font-family: var(--font-mono);
       font-size: 9px;
-      padding: 2px 6px;
+      padding: 4px 8px;
       border: 1px solid var(--amber-border);
       color: var(--amber);
       letter-spacing: 0.04em;
+      border-radius: 999px;
+      background: rgba(245, 185, 66, 0.08);
     }
     .insight-metric {
       margin-top: 8px;
@@ -880,12 +913,13 @@ interface Task {
     .metric-baseline { color: var(--text-muted); }
 
     .standup-card {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--bg-surface);
       border: 1px solid var(--border);
-      padding: 28px 32px;
+      padding: 32px;
       animation: fadeSlideUp var(--duration-slow) var(--ease-sharp) both;
       max-width: 720px;
-      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
+      box-shadow: var(--shadow-card);
+      border-radius: var(--radius-lg);
     }
     .standup-content { font-size: 13px; line-height: 1.8; color: rgba(232, 230, 224, 0.82); }
     .standup-content h2 {
@@ -900,39 +934,43 @@ interface Task {
     .standup-content li { margin: 4px 0; }
 
     .task-table {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--bg-surface);
       border: 1px solid var(--border);
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+      box-shadow: var(--shadow-card);
+      border-radius: var(--radius-md);
+      overflow: hidden;
     }
     .table-head {
       display: grid;
       grid-template-columns: 100px 1fr 140px 140px 120px;
-      padding: 10px 16px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border);
-      font-family: var(--font-mono);
-      font-size: 9px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
       letter-spacing: 0.12em;
       color: var(--text-muted);
+      text-transform: uppercase;
     }
     .table-row {
       display: grid;
       grid-template-columns: 100px 1fr 140px 140px 120px;
-      padding: 12px 16px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border-subtle);
       font-size: 12px;
       animation: fadeSlideUp var(--duration-mid) var(--ease-sharp) both;
       transition: background-color 180ms var(--ease-sharp), border-color 180ms var(--ease-sharp);
       cursor: pointer;
     }
-    .table-row:hover { background: rgba(255, 255, 255, 0.03); }
+    .table-row:hover { background: rgba(245, 185, 66, 0.06); }
     .table-row.selected {
-      background: linear-gradient(90deg, rgba(240, 165, 0, 0.1), rgba(240, 165, 0, 0.03));
+      background: linear-gradient(90deg, rgba(245, 185, 66, 0.14), rgba(245, 185, 66, 0.04));
       border-color: var(--amber-border);
     }
     .table-row:last-child { border-bottom: none; }
     .col-id { font-family: var(--font-mono); font-size: 10px; color: var(--amber); }
-    .col-title { color: var(--text-primary); font-weight: 500; }
-    .col-cat, .col-assignee { font-size: 11px; color: rgba(138, 134, 128, 0.78); font-family: var(--font-mono); }
+    .col-title { color: var(--text-primary); font-weight: 700; font-size: 13px; }
+    .col-cat, .col-assignee { font-size: 12px; color: rgba(156, 163, 175, 0.84); font-family: var(--font-body); }
     .col-status {
       font-family: var(--font-mono);
       font-size: 10px;
@@ -944,9 +982,11 @@ interface Task {
       color: rgba(232, 230, 224, 0.72);
       background: rgba(255, 255, 255, 0.03);
     }
-    [data-status="In Progress"].col-status { color: var(--amber); border-color: var(--amber-border); background: rgba(240, 165, 0, 0.12); }
-    [data-status="Done"].col-status { color: var(--success); border-color: rgba(76, 175, 121, 0.34); background: rgba(76, 175, 121, 0.12); }
-    [data-status="Blocked"].col-status { color: var(--danger); border-color: rgba(224, 82, 82, 0.34); background: rgba(224, 82, 82, 0.12); }
+    [data-status="In Progress"].col-status { color: var(--amber); border-color: var(--amber-border); background: rgba(245, 185, 66, 0.14); }
+    [data-status="Done"].col-status { color: var(--success); border-color: rgba(34, 197, 94, 0.34); background: rgba(34, 197, 94, 0.14); }
+    [data-status="Blocked"].col-status { color: var(--danger); border-color: rgba(239, 68, 68, 0.34); background: rgba(239, 68, 68, 0.14); }
+    [data-status="To Do"].col-status,
+    [data-status="Open"].col-status { color: var(--text-secondary); border-color: rgba(156, 163, 175, 0.22); background: rgba(156, 163, 175, 0.08); }
 
     .empty-view {
       display: grid;
@@ -956,9 +996,11 @@ interface Task {
       color: var(--text-muted);
       border: 1px solid var(--border);
       text-align: center;
-      padding: 24px;
+      padding: 28px;
       gap: 10px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent), var(--bg-surface);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--bg-surface);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
     }
     .rich-empty-state { min-height: 220px; }
     .empty-title {

@@ -85,13 +85,15 @@ export interface TaskEditorValue {
   `,
   styles: [`
     .editor-panel {
-      margin-bottom: 16px;
+      margin-bottom: 24px;
       border: 1px solid var(--border);
       background: var(--bg-surface);
-      padding: 16px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 18px;
     }
     .editor-header,
     .editor-footer {
@@ -100,24 +102,28 @@ export interface TaskEditorValue {
       justify-content: space-between;
     }
     .editor-title {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.12em;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
       color: var(--amber);
+      text-transform: uppercase;
     }
     .editor-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
+      gap: 16px;
     }
     .editor-field {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      font-family: var(--font-mono);
-      font-size: 10px;
+      gap: 8px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
       letter-spacing: 0.08em;
       color: var(--text-secondary);
+      text-transform: uppercase;
     }
     .editor-field input,
     .editor-field select,
@@ -125,15 +131,18 @@ export interface TaskEditorValue {
       border: 1px solid var(--border);
       background: var(--bg-elevated);
       color: var(--text-primary);
-      padding: 10px 12px;
+      padding: 12px 14px;
       font: inherit;
       outline: none;
       resize: vertical;
+      border-radius: var(--radius-md);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
     }
     .editor-field input:focus,
     .editor-field select:focus,
     .editor-field textarea:focus {
       border-color: var(--amber-border);
+      box-shadow: 0 0 0 3px rgba(245, 185, 66, 0.12);
     }
     .editor-textarea textarea {
       min-height: 96px;
@@ -142,17 +151,22 @@ export interface TaskEditorValue {
       border: 1px solid var(--border);
       background: transparent;
       color: var(--text-secondary);
-      padding: 8px 12px;
+      padding: 10px 14px;
       cursor: pointer;
-      font-family: var(--font-mono);
-      font-size: 10px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
       letter-spacing: 0.08em;
+      border-radius: 999px;
+      text-transform: uppercase;
     }
     .editor-action.primary {
       border-color: var(--amber-border);
-      background: var(--amber-dim);
-      color: var(--amber);
+      background: var(--amber);
+      color: #0B0F14;
+      box-shadow: 0 10px 24px rgba(245, 185, 66, 0.18);
     }
+    .editor-action.primary:hover { background: var(--amber-hover); }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
