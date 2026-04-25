@@ -29,6 +29,10 @@ export class ChatService {
     });
   }
 
+  clearHistory(): Observable<{ success: boolean }> {
+    return this.http.delete<{ success: boolean }>(`${this.apiBase}/chat/history`);
+  }
+
   clearConversation(): void {
     this.contextWindow.set([]);
   }
@@ -107,6 +111,9 @@ export class ChatService {
     }
 
     const payload = (await response.json()) as { message?: string };
+    if (intent.type === 'create_task' || intent.type === 'update_task' || intent.type === 'delete_task') {
+      notifyTasksChanged();
+    }
     subject.next({ type: 'chunk', content: payload.message ?? 'Task action completed.' });
     subject.next({ type: 'done' });
     subject.complete();
@@ -317,4 +324,8 @@ function getDisplayErrorMessage(error: unknown): string {
   }
 
   return 'Failed to reach backend. Is the API running?';
+}
+
+function notifyTasksChanged(): void {
+  globalThis.dispatchEvent?.(new CustomEvent('tasks:changed'));
 }

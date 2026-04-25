@@ -1,12 +1,14 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ITaskRepository, Task, CreateTaskParams } from '../common/contracts';
 import { TaskIndexingService } from './task-indexing.service';
 import { TaskPersistenceService } from './task-persistence.service';
 
 @Injectable()
-export class TaskRepositoryStub implements ITaskRepository {
+export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
+  private readonly logger = new Logger(TaskRepositoryStub.name);
   private tasks: Task[] = [];
   private loadingPromise: Promise<void> | null = null;
+  private loaded = false;
 
   constructor(
     @Inject(TaskIndexingService)
@@ -15,6 +17,13 @@ export class TaskRepositoryStub implements ITaskRepository {
     @Inject(TaskPersistenceService)
     private readonly persistence?: TaskPersistenceService
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureLoaded();
+    this.logger.log(
+      `LOADED TASKS: ${this.tasks.length}${this.persistence ? ` from ${this.persistence.getFilePath()}` : ' from in-memory seed'}`
+    );
+  }
 
   async seedVectorStore(): Promise<void> {
     await this.ensureLoaded();
@@ -154,7 +163,7 @@ export class TaskRepositoryStub implements ITaskRepository {
   }
 
   private async ensureLoaded(): Promise<void> {
-    if (this.tasks.length > 0) {
+    if (this.loaded) {
       return;
     }
 
@@ -169,10 +178,12 @@ export class TaskRepositoryStub implements ITaskRepository {
     const seeded = seedTasks();
     if (!this.persistence) {
       this.tasks = seeded;
+      this.loaded = true;
       return;
     }
 
-    this.tasks = await this.persistence.load(seeded);
+    this.tasks = await this.persistence.loadTasks(seeded);
+    this.loaded = true;
   }
 
   private async persistTasks(): Promise<void> {
@@ -180,7 +191,7 @@ export class TaskRepositoryStub implements ITaskRepository {
       return;
     }
 
-    await this.persistence.save(this.tasks);
+    await this.persistence.saveTasks(this.tasks);
   }
 }
 

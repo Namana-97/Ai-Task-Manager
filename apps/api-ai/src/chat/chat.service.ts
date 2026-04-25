@@ -66,7 +66,12 @@ export class ChatService {
     const normalized = message.trim().toLowerCase();
 
     if (/\b(standup|status report)\b/.test(normalized)) {
-      const scopeMode = /\bteam\b/.test(normalized) ? 'team' : 'personal';
+      const scopeMode =
+        /\bpersonal\b/.test(normalized)
+          ? 'personal'
+          : /\bteam\b/.test(normalized) || user.role !== 'viewer'
+            ? 'team'
+            : 'personal';
       const report = await this.reportsService.generateStandup(user, scopeMode);
       return {
         answer: report.markdown,
@@ -89,7 +94,11 @@ export class ChatService {
       );
     }
 
-    if (/\b(in progress|currently in progress|tasks in progress)\b/.test(normalized)) {
+    if (
+      /\b(in progress|currently in progress|tasks in progress|tasks are in progress|tasks which are in progress)\b/.test(
+        normalized
+      )
+    ) {
       const inProgress = tasks
         .filter((task) => task.status === 'In Progress')
         .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
@@ -98,6 +107,30 @@ export class ChatService {
         inProgress.length
           ? `## In Progress\n\n${inProgress.length} task(s) are currently in progress.`
           : '## In Progress\n\nNo tasks are currently marked in progress.'
+      );
+    }
+
+    if (/\b(pending|open tasks|tasks are pending|to do)\b/.test(normalized)) {
+      const pending = tasks
+        .filter((task) => ['Open', 'To Do'].includes(task.status))
+        .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+      return this.buildTaskListResponse(
+        pending,
+        pending.length
+          ? `## Pending Tasks\n\n${pending.length} task(s) are currently pending.`
+          : '## Pending Tasks\n\nNo tasks are currently pending.'
+      );
+    }
+
+    if (/\b(blocked tasks|tasks are blocked|which are blocked|list all(?:\s+the)?\s+tasks\s+which\s+are\s+blocked|list all blocked tasks|show blocked tasks)\b/.test(normalized)) {
+      const blocked = tasks
+        .filter((task) => task.status === 'Blocked')
+        .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+      return this.buildTaskListResponse(
+        blocked,
+        blocked.length
+          ? `## Blocked Tasks\n\n${blocked.length} task(s) are currently blocked.`
+          : '## Blocked Tasks\n\nNo tasks are currently blocked.'
       );
     }
 
@@ -128,6 +161,22 @@ export class ChatService {
         recent.length
           ? '## Recently Completed\n\nThese tasks were completed most recently.'
           : '## Recently Completed\n\nNo completed tasks are available in your scope.'
+      );
+    }
+
+    if (
+      /\b(all(?:\s+the)?\s+completed tasks|completed tasks|done tasks|tasks are done|tasks are completed|tasks which are done|tasks which are completed|what tasks are done|what tasks are completed|list completed tasks|show completed tasks)\b/.test(
+        normalized
+      )
+    ) {
+      const completed = tasks
+        .filter((task) => task.status === 'Done')
+        .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+      return this.buildTaskListResponse(
+        completed,
+        completed.length
+          ? `## Completed Tasks\n\n${completed.length} task(s) are completed.`
+          : '## Completed Tasks\n\nNo completed tasks are available in your scope.'
       );
     }
 

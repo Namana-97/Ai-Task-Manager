@@ -1,5 +1,75 @@
 [
   {
+    "id": "task-0027",
+    "title": "Testing the Workflow",
+    "description": "Create and execute tests for the workflow to ensure functionality",
+    "category": "Testing",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T01:27:20.900Z",
+    "updatedAt": "2026-04-25T01:28:39.310Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T01:28:39.310Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
+      {
+        "timestamp": "2026-04-25T01:27:20.900Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
+    "id": "task-0026",
+    "title": "Update webhook",
+    "description": "Task 101 : Update the existing webhook configuration.",
+    "category": "General",
+    "status": "In Progress",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T01:10:54.004Z",
+    "updatedAt": "2026-04-25T01:42:31.073Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T01:42:31.073Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
+      {
+        "timestamp": "2026-04-25T01:10:54.004Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
     "id": "task-0025",
     "title": "Very long validation scenario for notification retry policy",
     "category": "General",
@@ -99,7 +169,7 @@
     "status": "Open",
     "priority": "Medium",
     "createdAt": "2026-04-25T00:29:16.016Z",
-    "updatedAt": "2026-04-25T00:29:16.016Z",
+    "updatedAt": "2026-04-25T01:36:45.388Z",
     "assignee": {
       "id": "user-001",
       "name": "Alex Rivera",
@@ -111,6 +181,12 @@
     },
     "tags": [],
     "activityLog": [
+      {
+        "timestamp": "2026-04-25T01:36:45.388Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
       {
         "timestamp": "2026-04-25T00:29:16.016Z",
         "actorName": "AI Assistant",
@@ -595,10 +671,10 @@
     "title": "Patch stale Prisma migration in demo seed path",
     "description": "Patch stale Prisma migration in demo seed path with production-grade follow-through for the AI task management submission.",
     "category": "Infrastructure",
-    "status": "In Progress",
+    "status": "Done",
     "priority": "Critical",
     "createdAt": "2026-04-05T12:00:00.000Z",
-    "updatedAt": "2026-04-08T12:00:00.000Z",
+    "updatedAt": "2026-04-25T01:56:27.661Z",
     "dueDate": "2026-04-10T12:00:00.000Z",
     "assignee": {
       "id": "user-002",
@@ -615,6 +691,12 @@
     ],
     "role": "admin",
     "activityLog": [
+      {
+        "timestamp": "2026-04-25T01:56:27.661Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
       {
         "timestamp": "2026-04-06T12:00:00.000Z",
         "actorName": "Jordan Lee",
@@ -751,10 +833,10 @@
     "title": "Improve semantic search relevance sampling",
     "description": "Improve semantic search relevance sampling with production-grade follow-through for the AI task management submission.",
     "category": "AI",
-    "status": "In Progress",
+    "status": "Blocked",
     "priority": "High",
     "createdAt": "2026-04-16T12:00:00.000Z",
-    "updatedAt": "2026-04-19T12:00:00.000Z",
+    "updatedAt": "2026-04-25T01:40:44.388Z",
     "dueDate": "2026-04-21T12:00:00.000Z",
     "assignee": {
       "id": "user-002",
@@ -771,6 +853,18 @@
     ],
     "role": "admin",
     "activityLog": [
+      {
+        "timestamp": "2026-04-25T01:40:44.388Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
+      {
+        "timestamp": "2026-04-25T01:29:40.506Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
       {
         "timestamp": "2026-04-17T12:00:00.000Z",
         "actorName": "Jordan Lee",

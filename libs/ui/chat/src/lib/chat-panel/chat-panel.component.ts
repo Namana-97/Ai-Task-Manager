@@ -507,6 +507,7 @@ export class ChatPanelComponent {
   readonly messages = signal<ChatMessage[]>([]);
   readonly draft = signal('');
   readonly pendingConfirmation = signal<{ message: string; intent: unknown } | null>(null);
+  readonly skipHistoryLoad = signal(false);
   readonly showHistoryDivider = computed(() => {
     const messages = this.messages();
     return messages.length > 0 && messages.some((message) => message.isHistorical) && messages.some((message) => !message.isHistorical);
@@ -531,7 +532,7 @@ export class ChatPanelComponent {
 
   openPanel(): void {
     this.open.set(true);
-    if (this.messages().length === 0) {
+    if (this.messages().length === 0 && !this.skipHistoryLoad()) {
       this.loadHistory();
     }
   }
@@ -539,11 +540,17 @@ export class ChatPanelComponent {
   clear(): void {
     this.messages.set([]);
     this.pendingConfirmation.set(null);
+    this.skipHistoryLoad.set(true);
     this.chatService.clearConversation();
+    this.chatService.clearHistory().subscribe({
+      next: () => {},
+      error: () => {}
+    });
   }
 
   send(message: string, pendingIntent?: unknown): void {
     this.openPanel();
+    this.skipHistoryLoad.set(false);
     const isConfirmation = message === '__CONFIRM__' && !!pendingIntent;
     const assistantMessage: ChatMessage = {
       id: crypto.randomUUID(),

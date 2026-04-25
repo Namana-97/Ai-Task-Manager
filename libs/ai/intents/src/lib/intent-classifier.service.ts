@@ -55,6 +55,11 @@ export class AnthropicIntentClassifier {
   ) {}
 
   async classify(message: string, conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<ClassifiedIntent> {
+    const directIntent = this.ruleBasedIntent(message);
+    if (directIntent) {
+      return directIntent;
+    }
+
     if (this.provider === 'gemini') {
       return this.classifyWithGemini(message, conversationHistory);
     }
@@ -436,6 +441,20 @@ Consider conversation history when resolving references like "that task" or "the
     };
   }
 
+  private ruleBasedIntent(message: string): ClassifiedIntent | null {
+    const statusUpdate = this.extractStatusUpdate(message);
+    if (statusUpdate) {
+      return {
+        type: 'update_task',
+        confidence: 0.96,
+        parameters: statusUpdate,
+        requiresConfirmation: true
+      };
+    }
+
+    return null;
+  }
+
   private extractParameters(toolName: string, input: Record<string, unknown>): TaskMutationParams {
     if (toolName === 'update_task') {
       return {
@@ -450,6 +469,31 @@ Consider conversation history when resolving references like "that task" or "the
     return message.match(/task[-\s]?(\d+)/i)?.[0]?.replace(/\s+/g, '-').toLowerCase();
   }
 
+  private extractStatusUpdate(message: string): TaskMutationParams | null {
+    const patterns = [
+      /(?:change|update|set)\s+(?:the\s+)?status\s+(?:of\s+)?(task[-\s]?\d+)\s+(?:to|as)\s+([a-z ]+)/i,
+      /(?:mark|set)\s+(task[-\s]?\d+)\s+(?:to|as)\s+([a-z ]+)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = message.match(pattern);
+      if (!match) {
+        continue;
+      }
+
+      const taskId = match[1]?.replace(/\s+/g, '-').toLowerCase();
+      const status = normalizeStatus(match[2] ?? '');
+      if (taskId && status) {
+        return {
+          taskId,
+          status
+        };
+      }
+    }
+
+    return null;
+  }
+
   private resolveModel(model: string): string {
     if (
       this.provider === 'gemini' &&
@@ -459,4 +503,25 @@ Consider conversation history when resolving references like "that task" or "the
     }
     return model;
   }
+}
+
+function normalizeStatus(value: string): string | undefined {
+  const normalized = value.trim().toLowerCase().replace(/[?.!]+$/g, '');
+  if (normalized === 'blocked') {
+    return 'Blocked';
+  }
+  if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
+    return 'Done';
+  }
+  if (normalized === 'in progress' || normalized === 'in-progress') {
+    return 'In Progress';
+  }
+  if (normalized === 'open' || normalized === 'pending') {
+    return 'Open';
+  }
+  if (normalized === 'to do' || normalized === 'todo') {
+    return 'To Do';
+  }
+
+  return undefined;
 }

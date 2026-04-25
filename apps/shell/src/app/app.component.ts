@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChatPanelComponent } from '@task-ai/ui-chat';
@@ -1087,7 +1087,7 @@ interface Task {
     }
   `]
 })
-export class AppComponent implements OnInit, AfterViewInit {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   roles = ['admin', 'viewer', 'owner'] as const;
   currentRole = signal<string>(localStorage.getItem('mockUser') ?? 'admin');
   activeView = signal<string>('dashboard');
@@ -1113,6 +1113,10 @@ export class AppComponent implements OnInit, AfterViewInit {
     owner: { name: 'Carol Owner' }
   };
 
+  private readonly tasksChangedListener = () => {
+    this.loadTasks();
+  };
+
   constructor(
     private readonly http: HttpClient,
     private readonly tasksApi: TasksApiService
@@ -1122,10 +1126,15 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.startClock();
     this.checkBackend();
     this.loadTasks();
+    globalThis.addEventListener?.('tasks:changed', this.tasksChangedListener);
   }
 
   ngAfterViewInit() {
     setTimeout(() => this.loaded.set(true), 50);
+  }
+
+  ngOnDestroy() {
+    globalThis.removeEventListener?.('tasks:changed', this.tasksChangedListener);
   }
 
   private startClock() {
@@ -1166,9 +1175,8 @@ export class AppComponent implements OnInit, AfterViewInit {
         this.tasksLoading.set(false);
       },
       error: () => {
-        const fallback = this.fallbackTasks();
-        this.tasks.set(fallback);
-        this.selectedTaskId.set(fallback[0]?.id ?? null);
+        this.tasks.set([]);
+        this.selectedTaskId.set(null);
         this.updateMetrics();
         this.tasksLoading.set(false);
       }
@@ -1286,16 +1294,5 @@ export class AppComponent implements OnInit, AfterViewInit {
       assignee: task.assignee ? { name: task.assignee.name } : undefined,
       priority: task.priority
     };
-  }
-
-  private fallbackTasks(): Task[] {
-    return [
-      { id: 'task-0031', title: 'OAuth migration — finalize token refresh flow', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Jane' } },
-      { id: 'task-0027', title: 'Ship new dashboard layout v2', status: 'Done', category: 'Work → Design', assignee: { name: 'Alex' } },
-      { id: 'task-0044', title: 'API Refactor — v2 endpoints', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Dave' } },
-      { id: 'task-0038', title: 'Patch XSS vulnerability in comments', status: 'Done', category: 'Work → Security', assignee: { name: 'Jane' } },
-      { id: 'task-0041', title: 'Database migration — schema v3', status: 'Blocked', category: 'Work → Infra', assignee: { name: 'Bob' } },
-      { id: 'task-0019', title: 'Write unit tests for auth module', status: 'To Do', category: 'Work → Engineering', assignee: { name: 'Alex' } }
-    ];
   }
 }

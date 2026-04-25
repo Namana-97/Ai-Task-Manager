@@ -8,7 +8,7 @@ export class ChatHistoryService {
   private readonly pool = process.env.VECTOR_STORE_URL
     ? new Pool({ connectionString: process.env.VECTOR_STORE_URL })
     : null;
-  private readonly fallbackMessages: ChatMessage[] = [];
+  private readonly fallbackMessages: Array<ChatMessage & { userId: string; orgId: string }> = [];
 
   async save(message: Omit<ChatMessage, 'id' | 'createdAt'> & { userId: string; orgId: string }): Promise<ChatMessage> {
     const stored: ChatMessage = {
@@ -28,7 +28,11 @@ export class ChatHistoryService {
         [stored.id, message.userId, message.orgId, stored.role, stored.content, JSON.stringify(stored.sources ?? []), stored.createdAt]
       );
     } else {
-      this.fallbackMessages.unshift(stored);
+      this.fallbackMessages.unshift({
+        ...stored,
+        userId: message.userId,
+        orgId: message.orgId
+      });
     }
 
     return stored;
@@ -73,5 +77,18 @@ export class ChatHistoryService {
       messages: filtered.slice(0, limit),
       nextCursor: filtered.length > limit ? filtered[limit - 1].createdAt : null
     };
+  }
+
+  async clear(userId: string): Promise<void> {
+    if (this.pool) {
+      await this.pool.query('DELETE FROM chat_messages WHERE user_id = $1', [userId]);
+      return;
+    }
+
+    for (let index = this.fallbackMessages.length - 1; index >= 0; index -= 1) {
+      if (this.fallbackMessages[index]?.userId === userId) {
+        this.fallbackMessages.splice(index, 1);
+      }
+    }
   }
 }

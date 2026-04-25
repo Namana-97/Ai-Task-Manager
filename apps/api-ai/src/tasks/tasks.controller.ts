@@ -13,7 +13,9 @@ export class TasksController {
 
   @Get()
   async list(@CurrentUser() user: AuthenticatedUser) {
-    return this.tasksService.list(user);
+    const tasks = await this.tasksService.list(user);
+    console.log('RETURNING TASKS:', tasks.length);
+    return tasks;
   }
 
   @Get(':id')

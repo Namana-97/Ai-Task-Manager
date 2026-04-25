@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -87,6 +88,12 @@ export class ChatController {
     @Query('before') before?: string
   ) {
     return this.historyService.list(user.id, Number(limit ?? 20), before);
+  }
+
+  @Delete('history')
+  async clearHistory(@CurrentUser() user: AuthenticatedUser) {
+    await this.historyService.clear(user.id);
+    return { success: true };
   }
 
   private async saveDirectResponse(

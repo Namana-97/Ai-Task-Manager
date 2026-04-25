@@ -20,6 +20,16 @@ export class QueryRouterService {
     user: AuthenticatedUser
   ): Promise<RagResponse | null> {
     const normalized = message.trim().toLowerCase();
+
+    if (this.isRestrictedScopeQuery(normalized)) {
+      return {
+        answer: 'I can only access tasks within your authorized scope.',
+        sources: [],
+        tokensUsed: 13,
+        retrievalLatencyMs: 0
+      };
+    }
+
     const scope: ScopeFilter = {
       orgId: user.orgId,
       userId: user.id,
@@ -52,7 +62,16 @@ export class QueryRouterService {
   }
 
   private isListAllTasksQuery(message: string): boolean {
-    return /\b(all tasks|list tasks|show all tasks)\b/.test(message);
+    return /^(?:(?:show|list)(?:\s+all)?(?:\s+the)?\s+tasks|all tasks)$/i.test(
+      message.trim()
+    );
+  }
+
+  private isRestrictedScopeQuery(message: string): boolean {
+    return (
+      /\b(all tasks in every org|every org|all orgs|across orgs)\b/.test(message) ||
+      /\b(tasks i should not access|tasks i shouldnt access|tasks i should not have access to)\b/.test(message)
+    );
   }
 
   private isFollowUpQuery(message: string): boolean {

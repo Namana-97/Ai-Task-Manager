@@ -62,6 +62,9 @@ export class TaskActionExecutor {
           intent.parameters ?? {}
         );
         const { taskId, ...params } = payload;
+        if (!Object.keys(this.toTaskMutationPayload(params)).length) {
+          return { success: false, message: `No updates were provided for task ${payload.taskId}` };
+        }
         const task = await this.taskStore.update(payload.taskId, this.toTaskMutationPayload(params));
         await this.recordCategorizationFeedback(scope.userId, task.id, payload);
         this.logger.log(`Executed update_task for user=${scope.userId} taskId=${payload.taskId}`);

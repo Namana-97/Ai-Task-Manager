@@ -13,6 +13,9 @@ export class ReportsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('scope') scope?: 'personal' | 'team'
   ) {
-    return this.reportsService.generateStandup(user, scope ?? 'personal');
+    return this.reportsService.generateStandup(
+      user,
+      scope ?? (user.role === 'viewer' ? 'personal' : 'team')
+    );
   }
 }

@@ -19,12 +19,13 @@ export interface ApiTask {
 @Injectable({ providedIn: 'root' })
 export class TasksApiService {
   private readonly http = inject(HttpClient);
+  private readonly baseUrl = '/api/tasks';
 
   listTasks(): Observable<ApiTask[]> {
-    return this.http.get<ApiTask[]>('/tasks');
+    return this.http.get<ApiTask[]>(this.baseUrl);
   }
 
   getTask(taskId: string): Observable<ApiTask> {
-    return this.http.get<ApiTask>(`/tasks/${taskId}`);
+    return this.http.get<ApiTask>(`${this.baseUrl}/${taskId}`);
   }
 }

@@ -138,7 +138,7 @@ export class VectorStoreClient {
     }));
   }
 
-  buildPgFilter(scope: ScopeFilter): { clause: string; params: string[] } {
+  buildPgFilter(scope: ScopeFilter): { clause: string; params: unknown[] } {
     if (scope.role === 'viewer') {
       return {
         clause: `org_id = $2::text AND assignee_id = $3::text`,
@@ -155,7 +155,7 @@ export class VectorStoreClient {
 
     return {
       clause: `org_id = ANY($2::text[])`,
-      params: scope.childOrgIds?.length ? scope.childOrgIds : [scope.orgId]
+      params: [scope.childOrgIds?.length ? scope.childOrgIds : [scope.orgId]]
     };
   }
 

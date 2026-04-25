@@ -11,6 +11,10 @@ export class TaskPersistenceService {
       ? join(tmpdir(), `ai-task-manager-tasks-${process.pid}-${Math.random().toString(36).slice(2)}.json`)
       : process.env.TASK_STORE_PATH ?? join(process.cwd(), 'apps/api-ai/data/tasks.runtime.json');
 
+  getFilePath(): string {
+    return this.filePath;
+  }
+
   async load(seedTasks: Task[]): Promise<Task[]> {
     await mkdir(dirname(this.filePath), { recursive: true });
 
@@ -24,10 +28,18 @@ export class TaskPersistenceService {
     }
   }
 
+  async loadTasks(seedTasks: Task[]): Promise<Task[]> {
+    return this.load(seedTasks);
+  }
+
   async save(tasks: Task[]): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
     const payload = JSON.stringify(tasks.map(serializeTask), null, 2);
     await writeFile(this.filePath, payload, 'utf8');
+  }
+
+  async saveTasks(tasks: Task[]): Promise<void> {
+    await this.save(tasks);
   }
 }
 
