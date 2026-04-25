@@ -2,7 +2,10 @@ import { AfterViewInit, Component, OnDestroy, OnInit, signal } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChatPanelComponent } from '@task-ai/ui-chat';
-import { ApiTask, TasksApiService } from './tasks-api.service';
+import { ApiTask, TaskMutationInput, TasksApiService } from './tasks-api.service';
+import { AuthService } from './auth.service';
+import { LoginPageComponent } from './login-page.component';
+import { TaskEditorComponent, TaskEditorValue } from './task-editor.component';
 
 interface Insight {
   type: string;
@@ -24,8 +27,11 @@ interface Task {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, ChatPanelComponent],
+  imports: [CommonModule, ChatPanelComponent, LoginPageComponent, TaskEditorComponent],
   template: `
+    <app-login-page *ngIf="!isAuthenticated()" (loggedIn)="onLoggedIn()"></app-login-page>
+
+    <ng-container *ngIf="isAuthenticated()">
     <div class="shell" [class.loaded]="loaded()">
       <div class="scanline"></div>
 
@@ -102,6 +108,7 @@ interface Task {
                 *ngFor="let r of roles"
                 class="role-pill"
                 [class.active]="currentRole() === r"
+                [disabled]="isAuthenticated()"
                 (click)="switchRole(r)">
                 {{ r }}
               </button>
@@ -113,7 +120,7 @@ interface Task {
           <div class="user-block">
             <div class="user-avatar">{{ currentRole().charAt(0).toUpperCase() }}</div>
             <div class="user-info">
-              <span class="user-name">{{ roleUsers[currentRole()].name }}</span>
+              <span class="user-name">{{ currentUserName() }}</span>
               <span class="user-role">{{ currentRole() | uppercase }}</span>
             </div>
             <div class="connection-dot" [class.online]="backendOnline()"></div>
@@ -284,7 +291,19 @@ interface Task {
           <ng-container *ngIf="activeView() === 'tasks'">
             <div class="view-header">
               <h1 class="view-title">TASK REGISTRY</h1>
+              <div style="display:flex; gap:8px;">
+                <button class="refresh-btn" (click)="openCreateTaskForm()">CREATE</button>
+                <button class="refresh-btn" [disabled]="!selectedTaskId()" (click)="openEditTaskForm()">EDIT</button>
+                <button class="refresh-btn" [disabled]="!selectedTaskId()" (click)="deleteSelectedTask()">DELETE</button>
+              </div>
             </div>
+            <app-task-editor
+              *ngIf="taskFormMode()"
+              [mode]="taskFormMode()!"
+              [task]="taskEditorTask()"
+              (submitted)="saveTask($event)"
+              (cancelled)="closeTaskForm()">
+            </app-task-editor>
             <div class="task-table">
               <div class="table-head">
                 <span>ID</span><span>TITLE</span><span>CATEGORY</span>
@@ -310,6 +329,7 @@ interface Task {
     </div>
 
     <task-chat-panel (taskSelected)="onTaskSelected($event)"></task-chat-panel>
+    </ng-container>
   `,
   styles: [`
     .shell {
@@ -1089,7 +1109,7 @@ interface Task {
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   roles = ['admin', 'viewer', 'owner'] as const;
-  currentRole = signal<string>(localStorage.getItem('mockUser') ?? 'admin');
+  currentRole = signal<string>('admin');
   activeView = signal<string>('dashboard');
   backendOnline = signal(false);
   loaded = signal(false);
@@ -1097,6 +1117,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   tasksLoading = signal(true);
   insightsLoading = signal(false);
   standupLoading = signal(false);
+  taskFormMode = signal<'create' | 'edit' | null>(null);
+  taskEditorTask = signal<ApiTask | null>(null);
   tasks = signal<Task[]>([]);
   insights = signal<Insight[]>([]);
   standup = signal<string | null>(null);
@@ -1119,13 +1141,18 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly tasksApi: TasksApiService
+    private readonly tasksApi: TasksApiService,
+    private readonly auth: AuthService
   ) {}
 
   ngOnInit() {
     this.startClock();
-    this.checkBackend();
-    this.loadTasks();
+    this.auth.restoreSession();
+    if (this.isAuthenticated()) {
+      this.applyAuthenticatedUser();
+      this.checkBackend();
+      this.loadTasks();
+    }
     globalThis.addEventListener?.('tasks:changed', this.tasksChangedListener);
   }
 
@@ -1156,6 +1183,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadTasks() {
+    if (!this.isAuthenticated()) {
+      this.tasks.set([]);
+      this.selectedTaskId.set(null);
+      this.tasksLoading.set(false);
+      return;
+    }
+
     this.tasksLoading.set(true);
     this.http.get<{ insights: Insight[] }>('/insights').subscribe({
       next: (res) => {
@@ -1234,10 +1268,28 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   switchRole(role: string) {
+    if (this.isAuthenticated()) {
+      return;
+    }
     this.currentRole.set(role);
     localStorage.setItem('mockUser', role);
     this.loadTasks();
     this.insights.set([]);
+  }
+
+  onLoggedIn(): void {
+    this.applyAuthenticatedUser();
+    this.checkBackend();
+    this.loadTasks();
+    this.loadInsights();
+  }
+
+  isAuthenticated(): boolean {
+    return this.auth.isAuthenticated();
+  }
+
+  currentUserName(): string {
+    return this.auth.currentUser()?.name ?? this.roleUsers[this.currentRole()].name;
   }
 
   onTaskSelected(taskId: string) {
@@ -1294,5 +1346,79 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       assignee: task.assignee ? { name: task.assignee.name } : undefined,
       priority: task.priority
     };
+  }
+
+  openCreateTaskForm(): void {
+    this.taskEditorTask.set(null);
+    this.taskFormMode.set('create');
+  }
+
+  openEditTaskForm(): void {
+    const taskId = this.selectedTaskId();
+    if (!taskId) {
+      return;
+    }
+
+    this.tasksApi.getTask(taskId).subscribe({
+      next: (task) => {
+        this.taskEditorTask.set(task);
+        this.taskFormMode.set('edit');
+      }
+    });
+  }
+
+  closeTaskForm(): void {
+    this.taskFormMode.set(null);
+    this.taskEditorTask.set(null);
+  }
+
+  saveTask(value: TaskEditorValue): void {
+    const payload: TaskMutationInput = {
+      title: value.title,
+      description: value.description,
+      category: value.category,
+      priority: value.priority,
+      status: value.status,
+      assignee: value.assignee,
+      dueDate: value.dueDate,
+      tags: value.tags
+    };
+    const request =
+      this.taskFormMode() === 'edit' && this.selectedTaskId()
+        ? this.tasksApi.updateTask(this.selectedTaskId()!, payload)
+        : this.tasksApi.createTask(payload);
+
+    request.subscribe({
+      next: (task) => {
+        this.closeTaskForm();
+        this.loadTasks();
+        this.selectedTaskId.set(task.id);
+        globalThis.dispatchEvent?.(new Event('tasks:changed'));
+      }
+    });
+  }
+
+  deleteSelectedTask(): void {
+    const taskId = this.selectedTaskId();
+    if (!taskId || !globalThis.confirm?.(`Delete ${taskId}?`)) {
+      return;
+    }
+
+    this.tasksApi.deleteTask(taskId).subscribe({
+      next: () => {
+        this.loadTasks();
+        globalThis.dispatchEvent?.(new Event('tasks:changed'));
+      }
+    });
+  }
+
+  private applyAuthenticatedUser(): void {
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+
+    this.currentRole.set(user.role);
+    this.roleUsers[user.role] = { name: user.name };
   }
 }

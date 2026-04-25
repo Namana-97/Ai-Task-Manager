@@ -1,7 +1,20 @@
-import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+  Optional
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
 import { ITaskRepository, Task, CreateTaskParams } from '../common/contracts';
 import { TaskIndexingService } from './task-indexing.service';
 import { TaskPersistenceService } from './task-persistence.service';
+import { OrganizationEntity, TaskEntity, UserEntity } from '../database/entities';
+import { DatabaseSeedService } from '../database/database-seed.service';
+import { buildSeedTasks } from '../database/seed-data';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { RequestContextService } from '../common/request-context.service';
 
 @Injectable()
 export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
@@ -15,11 +28,35 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
     private readonly taskIndexing: TaskIndexingService,
     @Optional()
     @Inject(TaskPersistenceService)
-    private readonly persistence?: TaskPersistenceService
+    private readonly persistence?: TaskPersistenceService,
+    @Optional()
+    @InjectRepository(TaskEntity)
+    private readonly taskEntities?: Repository<TaskEntity>,
+    @Optional()
+    @InjectRepository(UserEntity)
+    private readonly users?: Repository<UserEntity>,
+    @Optional()
+    @InjectRepository(OrganizationEntity)
+    private readonly organizations?: Repository<OrganizationEntity>,
+    @Optional()
+    @Inject(DatabaseSeedService)
+    private readonly seedService?: DatabaseSeedService,
+    @Optional()
+    @Inject(AuditLogService)
+    private readonly auditLogService?: AuditLogService,
+    @Optional()
+    @Inject(RequestContextService)
+    private readonly requestContext?: RequestContextService
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.ensureLoaded();
+    if (this.usesDatabase()) {
+      const count = await this.taskEntities!.count();
+      this.logger.log(`LOADED TASKS: ${count} from sqlite-backed TypeORM storage`);
+      return;
+    }
+
     this.logger.log(
       `LOADED TASKS: ${this.tasks.length}${this.persistence ? ` from ${this.persistence.getFilePath()}` : ' from in-memory seed'}`
     );
@@ -32,22 +69,40 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
       return;
     }
 
-    await Promise.all(this.tasks.map((task) => this.taskIndexing.indexTask(task)));
+    const tasks = this.usesDatabase() ? await this.loadDbTasks() : this.tasks;
+    await Promise.all(tasks.map((task) => this.taskIndexing.indexTask(task)));
   }
 
   async findByIds(ids: string[]): Promise<Task[]> {
     await this.ensureLoaded();
-    return this.tasks.filter((task) => ids.includes(task.id));
+    if (!this.usesDatabase()) {
+      return this.tasks.filter((task) => ids.includes(task.id));
+    }
+
+    const tasks = await this.loadDbTasks({ where: { id: In(ids) } });
+    return ids
+      .map((id) => tasks.find((task) => task.id === id))
+      .filter((task): task is Task => Boolean(task));
   }
 
   async findById(
     taskId: string,
-    scope?: { orgId: string; userId: string; role: 'viewer' | 'admin' | 'owner'; childOrgIds?: string[] }
+    scope?: {
+      orgId: string;
+      userId: string;
+      role: 'viewer' | 'admin' | 'owner';
+      childOrgIds?: string[];
+    }
   ): Promise<Task | undefined> {
     await this.ensureLoaded();
 
     if (!scope) {
-      return this.tasks.find((task) => task.id === taskId);
+      if (!this.usesDatabase()) {
+        return this.tasks.find((task) => task.id === taskId);
+      }
+
+      const entity = await this.taskEntities!.findOne({ where: { id: taskId } });
+      return entity ? this.toTask(entity) : undefined;
     }
 
     const scoped = await this.findAll(scope);
@@ -56,7 +111,8 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
 
   async findUpdatedSince(userId: string, orgId: string, since: Date): Promise<Task[]> {
     await this.ensureLoaded();
-    return this.tasks.filter(
+    const tasks = this.usesDatabase() ? await this.loadDbTasks() : this.tasks;
+    return tasks.filter(
       (task) =>
         task.updatedAt >= since &&
         task.org.id === orgId &&
@@ -64,23 +120,257 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
     );
   }
 
-  async findAll(scope: { orgId: string; userId: string; role: 'viewer' | 'admin' | 'owner'; childOrgIds?: string[] }): Promise<Task[]> {
+  async findAll(scope: {
+    orgId: string;
+    userId: string;
+    role: 'viewer' | 'admin' | 'owner';
+    childOrgIds?: string[];
+  }): Promise<Task[]> {
     await this.ensureLoaded();
-    if (scope.role === 'viewer') {
-      return this.tasks.filter((task) => task.org.id === scope.orgId && task.assignee.id === scope.userId);
-    }
-    if (scope.role === 'admin') {
-      return this.tasks.filter((task) => task.org.id === scope.orgId);
-    }
-    const orgIds = scope.childOrgIds?.length ? scope.childOrgIds : [scope.orgId];
-    return this.tasks.filter((task) => orgIds.includes(task.org.id));
+    const tasks = this.usesDatabase() ? await this.loadDbTasks() : this.tasks;
+    return applyScope(tasks, scope);
   }
 
   async create(params: CreateTaskParams): Promise<Task> {
     await this.ensureLoaded();
+    if (!this.usesDatabase()) {
+      return this.createInMemory(params);
+    }
+
+    const now = new Date();
+    const assignee = await this.resolveAssignee(params.assignee);
+    const organization = await this.resolveOrganization(assignee);
+    const entity = this.taskEntities!.create({
+      id: await this.nextTaskId(),
+      title: params.title,
+      description: params.description ?? null,
+      category: params.category ?? 'General',
+      status: params.status ?? 'Open',
+      priority: params.priority ?? 'Medium',
+      createdAt: now,
+      updatedAt: now,
+      dueDate: params.dueDate ? new Date(params.dueDate) : null,
+      assigneeId: assignee.id,
+      organizationId: organization.id,
+      tags: params.tags ?? [],
+      activityLog: [
+        {
+          timestamp: now.toISOString(),
+          actorName: this.getActorName(),
+          action: 'created task',
+          details: 'Created through task mutation flow'
+        }
+      ],
+      visibilityRole: organization.id === 'org-root' ? 'admin' : 'owner'
+    });
+    const saved = await this.taskEntities!.save(entity);
+    const task = await this.requireTask(saved.id);
+    await this.taskIndexing.indexTask(task);
+    await this.auditLogService?.logTaskMutation('create', task);
+    return task;
+  }
+
+  async update(taskId: string, params: Partial<CreateTaskParams>): Promise<Task> {
+    await this.ensureLoaded();
+    if (!this.usesDatabase()) {
+      return this.updateInMemory(taskId, params);
+    }
+
+    const entity = await this.taskEntities!.findOne({ where: { id: taskId } });
+    if (!entity) {
+      throw new Error(`Task not found: ${taskId}`);
+    }
+
+    if (params.title !== undefined) {
+      entity.title = params.title;
+    }
+    if (params.description !== undefined) {
+      entity.description = params.description ?? null;
+    }
+    if (params.category !== undefined) {
+      entity.category = params.category;
+    }
+    if (params.priority !== undefined) {
+      entity.priority = params.priority;
+    }
+    if (params.status !== undefined) {
+      entity.status = params.status;
+    }
+    if (params.assignee !== undefined) {
+      const assignee = await this.resolveAssignee(params.assignee);
+      entity.assigneeId = assignee.id;
+    }
+    if (params.dueDate !== undefined) {
+      entity.dueDate = params.dueDate ? new Date(params.dueDate) : null;
+    }
+    if (params.tags !== undefined) {
+      entity.tags = params.tags;
+    }
+
+    entity.updatedAt = new Date();
+    entity.activityLog = [
+      {
+        timestamp: entity.updatedAt.toISOString(),
+        actorName: this.getActorName(),
+        action: 'updated task',
+        details: 'Updated through task mutation flow'
+      },
+      ...(entity.activityLog ?? [])
+    ];
+
+    await this.taskEntities!.save(entity);
+    const task = await this.requireTask(entity.id);
+    await this.taskIndexing.indexTask(task);
+    await this.auditLogService?.logTaskMutation('update', task);
+    return task;
+  }
+
+  async delete(taskId: string): Promise<void> {
+    await this.ensureLoaded();
+    if (!this.usesDatabase()) {
+      await this.deleteInMemory(taskId);
+      return;
+    }
+
+    const task = await this.findById(taskId);
+    if (!task) {
+      return;
+    }
+
+    await this.taskEntities!.delete({ id: taskId });
+    await this.taskIndexing.removeTask(taskId);
+    await this.auditLogService?.logTaskMutation('delete', task);
+  }
+
+  private async ensureLoaded(): Promise<void> {
+    if (this.loaded) {
+      return;
+    }
+
+    if (!this.loadingPromise) {
+      this.loadingPromise = this.loadTasks();
+    }
+
+    await this.loadingPromise;
+  }
+
+  private async loadTasks(): Promise<void> {
+    if (this.usesDatabase()) {
+      await this.seedService!.ensureSeeded();
+      this.loaded = true;
+      return;
+    }
+
+    const seeded = buildSeedTasks();
+    if (!this.persistence) {
+      this.tasks = seeded;
+      this.loaded = true;
+      return;
+    }
+
+    this.tasks = await this.persistence.loadTasks(seeded);
+    this.loaded = true;
+  }
+
+  private usesDatabase(): boolean {
+    return Boolean(this.taskEntities && this.users && this.organizations && this.seedService);
+  }
+
+  private async loadDbTasks(options?: Parameters<Repository<TaskEntity>['find']>[0]): Promise<Task[]> {
+    const entities = await this.taskEntities!.find(options);
+    return entities.map((entity) => this.toTask(entity));
+  }
+
+  private toTask(entity: TaskEntity): Task {
+    return {
+      id: entity.id,
+      title: entity.title,
+      description: entity.description ?? undefined,
+      category: entity.category,
+      status: entity.status,
+      priority: entity.priority,
+      createdAt: new Date(entity.createdAt),
+      updatedAt: new Date(entity.updatedAt),
+      dueDate: entity.dueDate ? new Date(entity.dueDate) : undefined,
+      assignee: {
+        id: entity.assignee.id,
+        name: entity.assignee.displayName,
+        role: entity.assignee.jobTitle
+      },
+      org: {
+        id: entity.organization.id,
+        name: entity.organization.name
+      },
+      tags: entity.tags ?? [],
+      activityLog: entity.activityLog ?? [],
+      role: entity.visibilityRole
+    };
+  }
+
+  private async resolveAssignee(rawAssignee?: string): Promise<UserEntity> {
+    const preferred = rawAssignee?.trim().toLowerCase();
+    const currentUserId = this.requestContext?.getUser()?.id;
+    if (preferred) {
+      const users = await this.users!.find();
+      const matched = users.find(
+        (user) =>
+          user.id.toLowerCase() === preferred ||
+          user.username.toLowerCase() === preferred ||
+          user.displayName.toLowerCase() === preferred
+      );
+      if (matched) {
+        return matched;
+      }
+    }
+
+    if (currentUserId) {
+      const current = await this.users!.findOne({ where: { id: currentUserId } });
+      if (current) {
+        return current;
+      }
+    }
+
+    return this.users!.findOneOrFail({ where: { id: 'user-001' } });
+  }
+
+  private async resolveOrganization(assignee: UserEntity): Promise<OrganizationEntity> {
+    const currentUserId = this.requestContext?.getUser()?.id;
+    if (currentUserId) {
+      const current = await this.users!.findOne({ where: { id: currentUserId } });
+      if (current?.organizationId) {
+        return this.organizations!.findOneByOrFail({ id: current.organizationId });
+      }
+    }
+
+    return this.organizations!.findOneByOrFail({ id: assignee.organizationId });
+  }
+
+  private async nextTaskId(): Promise<string> {
+    if (!this.usesDatabase()) {
+      return nextTaskId(this.tasks.map((task) => task.id));
+    }
+
+    const tasks = await this.taskEntities!.find({ select: { id: true } as never });
+    return nextTaskId(tasks.map((task) => task.id));
+  }
+
+  private async requireTask(taskId: string): Promise<Task> {
+    const task = await this.findById(taskId);
+    if (!task) {
+      throw new Error(`Task not found: ${taskId}`);
+    }
+
+    return task;
+  }
+
+  private getActorName(): string {
+    return this.requestContext?.getUser()?.name ?? this.requestContext?.getUser()?.username ?? 'AI Assistant';
+  }
+
+  private async createInMemory(params: CreateTaskParams): Promise<Task> {
     const now = new Date();
     const task: Task = {
-      id: nextTaskId(this.tasks),
+      id: nextTaskId(this.tasks.map((entry) => entry.id)),
       title: params.title,
       description: params.description,
       category: params.category ?? 'General',
@@ -103,42 +393,25 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
       role: 'admin'
     };
     this.tasks.unshift(task);
-    await this.persistTasks();
+    await this.persistence?.saveTasks(this.tasks);
     await this.taskIndexing.indexTask(task);
     return task;
   }
 
-  async update(taskId: string, params: Partial<CreateTaskParams>): Promise<Task> {
-    await this.ensureLoaded();
+  private async updateInMemory(taskId: string, params: Partial<CreateTaskParams>): Promise<Task> {
     const task = this.tasks.find((entry) => entry.id === taskId);
     if (!task) {
       throw new Error(`Task not found: ${taskId}`);
     }
 
-    if (params.title !== undefined) {
-      task.title = params.title;
-    }
-    if (params.description !== undefined) {
-      task.description = params.description;
-    }
-    if (params.category !== undefined) {
-      task.category = params.category;
-    }
-    if (params.priority !== undefined) {
-      task.priority = params.priority;
-    }
-    if (params.status !== undefined) {
-      task.status = params.status;
-    }
-    if (params.assignee !== undefined) {
-      task.assignee = { ...task.assignee, name: params.assignee };
-    }
-    if (params.dueDate !== undefined) {
-      task.dueDate = params.dueDate ? new Date(params.dueDate) : undefined;
-    }
-    if (params.tags !== undefined) {
-      task.tags = params.tags;
-    }
+    if (params.title !== undefined) task.title = params.title;
+    if (params.description !== undefined) task.description = params.description;
+    if (params.category !== undefined) task.category = params.category;
+    if (params.priority !== undefined) task.priority = params.priority;
+    if (params.status !== undefined) task.status = params.status;
+    if (params.assignee !== undefined) task.assignee = { ...task.assignee, name: params.assignee };
+    if (params.dueDate !== undefined) task.dueDate = params.dueDate ? new Date(params.dueDate) : undefined;
+    if (params.tags !== undefined) task.tags = params.tags;
 
     task.updatedAt = new Date();
     task.activityLog.unshift({
@@ -147,127 +420,42 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
       action: 'updated task',
       details: 'Updated through task mutation flow'
     });
-    await this.persistTasks();
+    await this.persistence?.saveTasks(this.tasks);
     await this.taskIndexing.indexTask(task);
     return task;
   }
 
-  async delete(taskId: string): Promise<void> {
-    await this.ensureLoaded();
+  private async deleteInMemory(taskId: string): Promise<void> {
     const index = this.tasks.findIndex((task) => task.id === taskId);
     if (index >= 0) {
       this.tasks.splice(index, 1);
-      await this.persistTasks();
+      await this.persistence?.saveTasks(this.tasks);
       await this.taskIndexing.removeTask(taskId);
     }
   }
-
-  private async ensureLoaded(): Promise<void> {
-    if (this.loaded) {
-      return;
-    }
-
-    if (!this.loadingPromise) {
-      this.loadingPromise = this.loadTasks();
-    }
-
-    await this.loadingPromise;
-  }
-
-  private async loadTasks(): Promise<void> {
-    const seeded = seedTasks();
-    if (!this.persistence) {
-      this.tasks = seeded;
-      this.loaded = true;
-      return;
-    }
-
-    this.tasks = await this.persistence.loadTasks(seeded);
-    this.loaded = true;
-  }
-
-  private async persistTasks(): Promise<void> {
-    if (!this.persistence) {
-      return;
-    }
-
-    await this.persistence.saveTasks(this.tasks);
-  }
 }
 
-function nextTaskId(tasks: Task[]): string {
-  const max = tasks.reduce((highest, task) => {
-    const parsed = Number(task.id.replace(/^task-/, ''));
+function applyScope(
+  tasks: Task[],
+  scope: { orgId: string; userId: string; role: 'viewer' | 'admin' | 'owner'; childOrgIds?: string[] }
+): Task[] {
+  if (scope.role === 'viewer') {
+    return tasks.filter(
+      (task) => task.org.id === scope.orgId && task.assignee.id === scope.userId
+    );
+  }
+  if (scope.role === 'admin') {
+    return tasks.filter((task) => task.org.id === scope.orgId);
+  }
+  const orgIds = scope.childOrgIds?.length ? scope.childOrgIds : [scope.orgId];
+  return tasks.filter((task) => orgIds.includes(task.org.id));
+}
+
+function nextTaskId(ids: string[]): string {
+  const max = ids.reduce((highest, id) => {
+    const parsed = Number(id.replace(/^task-/, ''));
     return Number.isFinite(parsed) ? Math.max(highest, parsed) : highest;
   }, 0);
 
   return `task-${String(max + 1).padStart(4, '0')}`;
-}
-
-function seedTasks(): Task[] {
-  const now = new Date('2026-04-22T12:00:00.000Z');
-  const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-  const users = [
-    { id: 'user-001', name: 'Alex Rivera', role: 'Frontend Lead' },
-    { id: 'user-002', name: 'Jordan Lee', role: 'Backend Engineer' },
-    { id: 'user-003', name: 'Taylor Kim', role: 'Product Manager' },
-    { id: 'user-004', name: 'Morgan Patel', role: 'QA Engineer' }
-  ];
-  const orgs = [
-    { id: 'org-root', name: 'Acme Product' },
-    { id: 'org-design', name: 'Acme Design' }
-  ];
-
-  const specs = [
-    ['task-0001', 'Fix sprint burndown chart timezone drift', 'Analytics', 'In Progress', users[1], orgs[0], 3],
-    ['task-0002', 'Prepare Q2 roadmap review deck', 'Planning', 'Done', users[2], orgs[0], 1],
-    ['task-0003', 'Investigate flaky websocket reconnect test', 'Platform', 'Blocked', users[3], orgs[0], 6],
-    ['task-0004', 'Refine onboarding checklist for enterprise trial', 'Operations', 'Open', users[2], orgs[0], 4],
-    ['task-0005', 'Ship keyboard navigation for task drawer', 'UX', 'Done', users[0], orgs[0], 2],
-    ['task-0006', 'Reduce API p95 latency for /tasks/search', 'Platform', 'In Progress', users[1], orgs[0], 16],
-    ['task-0007', 'Backfill audit logs for overdue task escalations', 'Compliance', 'Open', users[1], orgs[0], 7],
-    ['task-0008', 'Design blocked-state empty view', 'Design', 'In Progress', users[0], orgs[1], 8],
-    ['task-0009', 'Create regression suite for recurring tasks', 'QA', 'Done', users[3], orgs[0], 2],
-    ['task-0010', 'Resolve SSO callback mismatch for sandbox orgs', 'Security', 'Blocked', users[1], orgs[0], 10],
-    ['task-0011', 'Tune notification digest batching job', 'Platform', 'Done', users[1], orgs[0], 5],
-    ['task-0012', 'Document RBAC edge cases for support', 'Support', 'Open', users[2], orgs[0], 9],
-    ['task-0013', 'Patch stale Prisma migration in demo seed path', 'Infrastructure', 'In Progress', users[1], orgs[0], 15],
-    ['task-0014', 'Polish mobile task details drawer spacing', 'UX', 'Done', users[0], orgs[0], 1],
-    ['task-0015', 'Audit third-party webhook retries', 'Security', 'In Progress', users[3], orgs[0], 12],
-    ['task-0016', 'Write release notes for April sprint closeout', 'Planning', 'Open', users[2], orgs[0], 0],
-    ['task-0017', 'Investigate overdue cluster in customer migration tasks', 'Operations', 'Blocked', users[2], orgs[0], 17],
-    ['task-0018', 'Improve semantic search relevance sampling', 'AI', 'In Progress', users[1], orgs[0], 4],
-    ['task-0019', 'Sync design tokens with shell preview app', 'Design', 'Done', users[0], orgs[1], 3],
-    ['task-0020', 'Add post-release anomaly dashboard drilldowns', 'Analytics', 'Open', users[2], orgs[0], 14]
-  ] as const;
-
-  return specs.map(([id, title, category, status, assignee, org, ageDays], index) => ({
-    id,
-    title,
-    description: `${title} with production-grade follow-through for the AI task management submission.`,
-    category,
-    status,
-    priority: (['Critical', 'High', 'Medium', 'Low'][index % 4] as Task['priority']),
-    createdAt: daysAgo(ageDays + 2),
-    updatedAt: daysAgo(Math.max(ageDays - 1, 0)),
-    dueDate: daysAgo(ageDays - 3),
-    assignee,
-    org,
-    tags: [category.toLowerCase(), status.toLowerCase().replace(/\s+/g, '-')],
-    role: org.id === 'org-root' ? 'admin' : 'owner',
-    activityLog: [
-      {
-        timestamp: daysAgo(ageDays + 1).toISOString(),
-        actorName: assignee.name,
-        action: 'created task',
-        details: 'Initial triage completed'
-      },
-      {
-        timestamp: daysAgo(Math.max(ageDays - 1, 0)).toISOString(),
-        actorName: 'System',
-        action: `moved to ${status}`,
-        details: 'Workflow automation sync'
-      }
-    ]
-  }));
 }

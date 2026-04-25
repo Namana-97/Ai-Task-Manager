@@ -188,11 +188,18 @@ export class ChatService {
   }
 
   private requestHeaders(): HeadersInit {
-    const authToken = localStorage.getItem('authToken')?.trim() || 'dev-stub-token';
+    const authToken = localStorage.getItem('authToken')?.trim();
+    const useLegacyAuth = localStorage.getItem('USE_LEGACY_AUTH') === 'true';
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-      'X-Mock-User': localStorage.getItem('mockUser') ?? 'admin'
+      ...(authToken && authToken !== 'dev-stub-token'
+        ? { Authorization: `Bearer ${authToken}` }
+        : useLegacyAuth
+          ? {
+              Authorization: 'Bearer dev-stub-token',
+              'X-Mock-User': localStorage.getItem('mockUser') ?? 'admin'
+            }
+          : {})
     };
   }
 

@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTaskParams, Task, AuthenticatedUser } from '../common/contracts';
 import { TaskRepositoryStub } from '../repository/task-repository.stub';
 
@@ -33,7 +33,10 @@ export class TasksService {
     return task;
   }
 
-  async create(input: CreateTaskParams): Promise<Task> {
+  async create(input: CreateTaskParams, user: AuthenticatedUser): Promise<Task> {
+    if (user.role === 'viewer') {
+      throw new ForbiddenException('Task creation is not permitted');
+    }
     return this.repository.create(input);
   }
 

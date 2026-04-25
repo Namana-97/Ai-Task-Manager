@@ -55,8 +55,11 @@ export interface ChatMessage {
 
 export interface AuthenticatedUser {
   id: string;
+  username?: string;
+  name?: string;
   orgId: string;
   orgName: string;
   role: 'viewer' | 'admin' | 'owner';
   childOrgIds?: string[];
+  permissions?: string[];
 }
