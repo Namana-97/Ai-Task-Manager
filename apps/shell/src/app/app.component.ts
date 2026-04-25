@@ -1,6 +1,8 @@
-import { AfterViewInit, Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { ChatPanelComponent } from '@task-ai/ui-chat';
 import { ChatService } from '@task-ai/ui-chat';
 import { ApiTask, TaskMutationInput, TasksApiService } from './tasks-api.service';
@@ -23,12 +25,22 @@ interface Task {
   category: string;
   assignee?: { name: string };
   priority?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  dueDate?: string;
 }
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, ChatPanelComponent, LoginPageComponent, TaskEditorComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    DragDropModule,
+    ChatPanelComponent,
+    LoginPageComponent,
+    TaskEditorComponent
+  ],
   template: `
     <app-login-page *ngIf="!isAuthenticated()" (loggedIn)="onLoggedIn()"></app-login-page>
 
@@ -293,10 +305,52 @@ interface Task {
           <ng-container *ngIf="activeView() === 'tasks'">
             <div class="view-header">
               <h1 class="view-title">TASK REGISTRY</h1>
-              <div style="display:flex; gap:8px;">
+              <div class="flex flex-wrap gap-2">
                 <button class="refresh-btn" (click)="openCreateTaskForm()">CREATE</button>
                 <button class="refresh-btn" [disabled]="!selectedTaskId()" (click)="openEditTaskForm()">EDIT</button>
                 <button class="refresh-btn" [disabled]="!selectedTaskId()" (click)="deleteSelectedTask()">DELETE</button>
+              </div>
+            </div>
+            <div class="task-toolbar flex flex-wrap gap-3">
+              <label class="task-toolbar-field">
+                <span>STATUS</span>
+                <select
+                  [ngModel]="taskStatusFilter()"
+                  (ngModelChange)="setTaskStatusFilter($event)">
+                  <option value="all">All</option>
+                  <option *ngFor="let status of taskStatuses" [value]="status">{{ status }}</option>
+                </select>
+              </label>
+              <label class="task-toolbar-field">
+                <span>CATEGORY</span>
+                <select
+                  [ngModel]="taskCategoryFilter()"
+                  (ngModelChange)="setTaskCategoryFilter($event)">
+                  <option value="all">All</option>
+                  <option *ngFor="let category of taskCategories()" [value]="category">{{ category }}</option>
+                </select>
+              </label>
+              <label class="task-toolbar-field">
+                <span>SORT</span>
+                <select
+                  [ngModel]="taskSortField()"
+                  (ngModelChange)="setTaskSortField($event)">
+                  <option value="updatedAt">Date</option>
+                  <option value="priority">Priority</option>
+                </select>
+              </label>
+              <button class="refresh-btn" type="button" (click)="toggleTaskSortDirection()">
+                {{ taskSortDirection() === 'desc' ? 'DESC' : 'ASC' }}
+              </button>
+            </div>
+            <div class="task-dropbar grid gap-3">
+              <div
+                class="task-dropzone"
+                *ngFor="let status of taskStatuses"
+                cdkDropList
+                [cdkDropListData]="status"
+                (cdkDropListDropped)="handleTaskStatusDrop($event, status)">
+                {{ status }}
               </div>
             </div>
             <app-task-editor
@@ -313,10 +367,12 @@ interface Task {
               </div>
               <div
                 class="table-row"
-                *ngFor="let t of tasks(); let i = index"
+                *ngFor="let t of filteredTasks(); let i = index"
                 [attr.data-task-id]="t.id"
                 [class.selected]="selectedTaskId() === t.id"
                 [style.animation-delay]="(i * 30) + 'ms'"
+                cdkDrag
+                [cdkDragData]="t"
                 (click)="selectTask(t.id)">
                 <span class="col-id">{{ t.id }}</span>
                 <span class="col-title">{{ t.title }}</span>
@@ -933,6 +989,66 @@ interface Task {
     .standup-content ul { padding-left: 16px; }
     .standup-content li { margin: 4px 0; }
 
+    .task-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .task-toolbar-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 140px;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .task-toolbar-field select {
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 10px 12px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      border-radius: var(--radius-md);
+      outline: none;
+    }
+    .task-toolbar-field select:focus {
+      border-color: var(--amber-border);
+      box-shadow: 0 0 0 3px rgba(245, 185, 66, 0.12);
+    }
+    .task-dropbar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .task-dropzone {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border: 1px dashed var(--border-strong);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: border-color 180ms var(--ease-sharp), background-color 180ms var(--ease-sharp), color 180ms var(--ease-sharp);
+    }
+    .task-dropzone:hover {
+      border-color: var(--amber-border);
+      background: rgba(245, 185, 66, 0.08);
+      color: var(--amber);
+    }
     .task-table {
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent), var(--bg-surface);
       border: 1px solid var(--border);
@@ -1153,6 +1269,7 @@ interface Task {
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   roles = ['admin', 'viewer', 'owner'] as const;
+  taskStatuses = ['Open', 'In Progress', 'Blocked', 'Done', 'To Do'] as const;
   currentRole = signal<string>('admin');
   activeView = signal<string>('dashboard');
   backendOnline = signal(false);
@@ -1164,10 +1281,47 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   taskFormMode = signal<'create' | 'edit' | null>(null);
   taskEditorTask = signal<ApiTask | null>(null);
   tasks = signal<Task[]>([]);
+  taskStatusFilter = signal<string>('all');
+  taskCategoryFilter = signal<string>('all');
+  taskSortField = signal<'updatedAt' | 'priority'>('updatedAt');
+  taskSortDirection = signal<'asc' | 'desc'>('desc');
   insights = signal<Insight[]>([]);
   standup = signal<string | null>(null);
   currentTime = signal<string>('');
   metricsList = signal<{ value: string; label: string; pct: number }[]>([]);
+  taskCategories = computed(() =>
+    Array.from(new Set(this.tasks().map((task) => task.category).filter(Boolean))).sort()
+  );
+  filteredTasks = computed(() => {
+    const statusFilter = this.taskStatusFilter();
+    const categoryFilter = this.taskCategoryFilter();
+    const sortField = this.taskSortField();
+    const direction = this.taskSortDirection() === 'asc' ? 1 : -1;
+    const tasks = [...this.tasks()].filter((task) => {
+      if (statusFilter !== 'all' && task.status !== statusFilter) {
+        return false;
+      }
+      if (categoryFilter !== 'all' && task.category !== categoryFilter) {
+        return false;
+      }
+      return true;
+    });
+
+    tasks.sort((left, right) => {
+      if (sortField === 'priority') {
+        return (
+          (priorityRank(left.priority) - priorityRank(right.priority)) *
+          direction
+        );
+      }
+
+      const leftDate = Date.parse(left.updatedAt ?? left.createdAt ?? '') || 0;
+      const rightDate = Date.parse(right.updatedAt ?? right.createdAt ?? '') || 0;
+      return (leftDate - rightDate) * direction;
+    });
+
+    return tasks;
+  });
 
   today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
@@ -1248,7 +1402,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (tasks) => {
         const mapped = tasks.map((task) => this.toTaskSummary(task));
         this.tasks.set(mapped);
-        this.selectedTaskId.set(mapped[0]?.id ?? null);
+        this.syncSelectionWithVisibleTasks();
         this.backendOnline.set(true);
         this.updateMetrics();
         this.tasksLoading.set(false);
@@ -1317,8 +1471,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.currentRole.set(role);
-    localStorage.setItem('mockUser', role);
-    this.loadTasks();
     this.insights.set([]);
   }
 
@@ -1398,7 +1550,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       status: task.status,
       category: task.category,
       assignee: task.assignee ? { name: task.assignee.name } : undefined,
-      priority: task.priority
+      priority: task.priority,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      dueDate: task.dueDate
     };
   }
 
@@ -1466,6 +1621,47 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  setTaskStatusFilter(value: string): void {
+    this.taskStatusFilter.set(value);
+    this.syncSelectionWithVisibleTasks();
+  }
+
+  setTaskCategoryFilter(value: string): void {
+    this.taskCategoryFilter.set(value);
+    this.syncSelectionWithVisibleTasks();
+  }
+
+  setTaskSortField(value: 'updatedAt' | 'priority'): void {
+    this.taskSortField.set(value);
+    this.syncSelectionWithVisibleTasks();
+  }
+
+  toggleTaskSortDirection(): void {
+    this.taskSortDirection.update((value) => (value === 'desc' ? 'asc' : 'desc'));
+    this.syncSelectionWithVisibleTasks();
+  }
+
+  handleTaskStatusDrop(event: CdkDragDrop<string>, status: string): void {
+    const task = event.item.data as Task | undefined;
+    if (!task || task.status === status) {
+      return;
+    }
+
+    this.tasksApi.updateTask(task.id, { status }).subscribe({
+      next: (updatedTask) => {
+        this.tasks.update((current) =>
+          current.map((entry) =>
+            entry.id === updatedTask.id ? this.toTaskSummary(updatedTask) : entry
+          )
+        );
+        this.selectedTaskId.set(updatedTask.id);
+        this.syncSelectionWithVisibleTasks();
+        this.updateMetrics();
+        globalThis.dispatchEvent?.(new Event('tasks:changed'));
+      }
+    });
+  }
+
   private applyAuthenticatedUser(): void {
     const user = this.auth.currentUser();
     if (!user) {
@@ -1502,5 +1698,29 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private resetChatState(): void {
     this.chatService.clearConversation();
     sessionStorage.setItem('skipChatHistoryLoad', 'true');
+  }
+
+  private syncSelectionWithVisibleTasks(tasks = this.filteredTasks()): void {
+    const selectedTaskId = this.selectedTaskId();
+    if (selectedTaskId && tasks.some((task) => task.id === selectedTaskId)) {
+      return;
+    }
+
+    this.selectedTaskId.set(tasks[0]?.id ?? null);
+  }
+}
+
+function priorityRank(priority?: string): number {
+  switch (priority) {
+    case 'Critical':
+      return 0;
+    case 'High':
+      return 1;
+    case 'Medium':
+      return 2;
+    case 'Low':
+      return 3;
+    default:
+      return 4;
   }
 }

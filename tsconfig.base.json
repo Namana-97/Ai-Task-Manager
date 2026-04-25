@@ -18,6 +18,8 @@
       "@ai-task-manager/ai/rag": ["libs/ai/rag/src/index.ts"],
       "@ai-task-manager/ai/guardrails": ["libs/ai/guardrails/src/index.ts"],
       "@ai-task-manager/ai/intents": ["libs/ai/intents/src/index.ts"],
+      "@task-ai/auth": ["libs/auth/src/index.ts"],
+      "@task-ai/data": ["libs/data/src/index.ts"],
       "@ai-task-manager/ui/chat": ["libs/ui/chat/src/index.ts"],
       "@task-ai/ui-chat": ["libs/ui/chat/src/index.ts"]
     }

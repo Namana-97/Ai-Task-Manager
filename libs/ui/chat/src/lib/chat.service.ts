@@ -70,12 +70,7 @@ export class ChatService {
 
       await this.streamChat(message, subject);
     } catch (error) {
-      if (this.shouldUseMockChat() || isNetworkError(error)) {
-        await this.streamMockResponse(subject);
-        return;
-      }
-
-      subject.next({ type: 'error', error: getDisplayErrorMessage(error) });
+      subject.next({ type: 'error', error: getDisplayErrorMessage(error, isNetworkError(error)) });
       subject.complete();
     }
   }
@@ -169,45 +164,12 @@ export class ChatService {
     }
   }
 
-  private async streamMockResponse(subject: Subject<ChatChunk>): Promise<void> {
-    const answer =
-      'You finished 4 tasks last week, with the strongest throughput in UX and Platform work. The most visible completions were [task-0005], [task-0009], [task-0011], and [task-0014].';
-    const sources = [
-      { taskId: 'task-0005', title: 'Ship keyboard navigation for task drawer', similarity: 0.93 },
-      { taskId: 'task-0011', title: 'Tune notification digest batching job', similarity: 0.88 }
-    ];
-
-    for (const token of answer.split(' ')) {
-      subject.next({ type: 'chunk', content: `${token} ` });
-      await new Promise((resolve) => setTimeout(resolve, 24));
-    }
-
-    subject.next({ type: 'sources', sources });
-    subject.next({ type: 'done' });
-    subject.complete();
-  }
-
   private requestHeaders(): HeadersInit {
     const authToken = localStorage.getItem('authToken')?.trim();
-    const useLegacyAuth = localStorage.getItem('USE_LEGACY_AUTH') === 'true';
     return {
       'Content-Type': 'application/json',
-      ...(authToken && authToken !== 'dev-stub-token'
-        ? { Authorization: `Bearer ${authToken}` }
-        : useLegacyAuth
-          ? {
-              Authorization: 'Bearer dev-stub-token',
-              'X-Mock-User': localStorage.getItem('mockUser') ?? 'admin'
-            }
-          : {})
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
     };
-  }
-
-  private shouldUseMockChat(): boolean {
-    return (
-      localStorage.getItem('USE_MOCK_CHAT') === 'true' ||
-      new URLSearchParams(globalThis.location?.search ?? '').get('mockChat') === 'true'
-    );
   }
 }
 
@@ -325,7 +287,11 @@ function mapStatusToMessage(status: number, fallback: string): string {
   return fallback;
 }
 
-function getDisplayErrorMessage(error: unknown): string {
+function getDisplayErrorMessage(error: unknown, networkError = false): string {
+  if (networkError) {
+    return 'Failed to reach backend. Is the API running?';
+  }
+
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }

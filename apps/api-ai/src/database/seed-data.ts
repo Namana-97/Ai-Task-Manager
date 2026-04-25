@@ -22,6 +22,11 @@ export interface SeedRole {
   permissions: Permission[];
 }
 
+export interface SeedPermission {
+  name: Permission;
+  description: string;
+}
+
 export const seedOrganizations: SeedOrganization[] = [
   { id: 'org-root', name: 'Acme Product', parentId: null },
   { id: 'org-design', name: 'Acme Design', parentId: 'org-root' }
@@ -31,6 +36,14 @@ export const seedRoles: SeedRole[] = [
   { name: 'owner', permissions: ROLE_PERMISSIONS.owner },
   { name: 'admin', permissions: ROLE_PERMISSIONS.admin },
   { name: 'viewer', permissions: ROLE_PERMISSIONS.viewer }
+];
+
+export const seedPermissions: SeedPermission[] = [
+  { name: Permission.TaskRead, description: 'Read tasks within authorized scope' },
+  { name: Permission.TaskCreate, description: 'Create tasks within authorized scope' },
+  { name: Permission.TaskUpdate, description: 'Update tasks within authorized scope' },
+  { name: Permission.TaskDelete, description: 'Delete tasks within authorized scope' },
+  { name: Permission.AuditRead, description: 'Read audit logs within authorized scope' }
 ];
 
 export const seedUsers: SeedUser[] = [

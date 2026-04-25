@@ -7,12 +7,11 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthenticatedUser } from '../common/contracts';
-import { AuthService } from './auth.service';
 import { IS_PUBLIC_KEY } from './public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
-  constructor(private readonly authService: AuthService) {
+  constructor() {
     super();
   }
 
@@ -26,27 +25,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization as string | undefined;
-    const mockUserHeader = request.headers['x-mock-user'] as string | undefined;
-    const isStub = process.env.AUTH_STUB === 'true';
     const bearerToken = authHeader?.replace(/^Bearer\s+/i, '').trim();
 
     if (!bearerToken) {
-      if (!isStub) {
-        throw new UnauthorizedException('Authentication required');
-      }
-      request.user = await this.authService.getLegacyStubUser(authHeader, mockUserHeader);
-      return true;
+      throw new UnauthorizedException('Authentication required');
     }
 
-    if (isJwtLike(bearerToken)) {
-      const canActivate = (await super.canActivate(context)) as boolean;
-      if (canActivate) {
-        return true;
-      }
+    if (!isJwtLike(bearerToken)) {
+      throw new UnauthorizedException('Invalid bearer token');
     }
 
-    if (isStub) {
-      request.user = await this.authService.getLegacyStubUser(authHeader, mockUserHeader);
+    const canActivate = (await super.canActivate(context)) as boolean;
+    if (canActivate) {
       return true;
     }
 

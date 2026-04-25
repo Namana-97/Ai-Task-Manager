@@ -8,7 +8,13 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RbacGuard } from './rbac.guard';
 import { DatabaseSeedService } from '../database/database-seed.service';
-import { OrganizationEntity, RoleEntity, TaskEntity, UserEntity } from '../database/entities';
+import {
+  OrganizationEntity,
+  PermissionEntity,
+  RoleEntity,
+  TaskEntity,
+  UserEntity
+} from '../database/entities';
 import { TaskPersistenceService } from '../repository/task-persistence.service';
 
 @Module({
@@ -20,7 +26,13 @@ import { TaskPersistenceService } from '../repository/task-persistence.service';
         expiresIn: Number(process.env.JWT_EXPIRES_IN_SECONDS ?? 3600)
       }
     }),
-    TypeOrmModule.forFeature([OrganizationEntity, RoleEntity, UserEntity, TaskEntity])
+    TypeOrmModule.forFeature([
+      OrganizationEntity,
+      PermissionEntity,
+      RoleEntity,
+      UserEntity,
+      TaskEntity
+    ])
   ],
   controllers: [AuthController],
   providers: [

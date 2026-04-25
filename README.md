@@ -10,6 +10,7 @@ The project now supports a real secure task-management flow on top of the existi
 
 - JWT authentication with `/auth/login`
 - TypeORM-backed relational storage for users, organizations, roles, tasks, and audit logs
+- structured permission records plus role-to-permission mapping
 - RBAC-enforced `/tasks` and `/audit-log` APIs
 - Angular login flow and task create/edit/delete forms
 - Existing AI chat, standup, insights, embeddings, and vector retrieval preserved
@@ -41,20 +42,25 @@ Retained from the existing AI system:
 
 ```text
 apps/
-  api-ai/                  NestJS backend
-  shell/                   Angular frontend
+  api/                     challenge-compatible backend wrapper
+  api-ai/                  live NestJS backend implementation
+  dashboard/               challenge-compatible frontend wrapper
+  shell/                   live Angular frontend implementation
 
 libs/
+  auth/                    challenge-compatible RBAC/auth exports
   ai/
     embeddings/            embeddings, vector-store access
     guardrails/            sanitization, rate limiting, canary detection
     intents/               intent classification and task mutations
     rag/                   retrieval, prompts, LLM client
+  data/                    challenge-compatible shared contracts
+  types/                   ambient type declarations
   ui/
     chat/                  chat drawer UI
 ```
 
-The original repo naming and app names predate the challenge. The secure task-management implementation lives inside the existing workspace without removing the AI features.
+The original repo naming and app names predate the challenge. To preserve the existing AI-enabled implementation without refactoring it apart, the repo now includes compatibility wrappers at `apps/api`, `apps/dashboard`, `libs/data`, and `libs/auth` while the live implementation continues to run from `apps/api-ai` and `apps/shell`.
 
 ## Setup
 
@@ -82,7 +88,6 @@ API_PORT=3333
 CORE_DB_PATH=apps/api-ai/data/core.sqlite
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN_SECONDS=3600
-AUTH_STUB=false
 
 LLM_PROVIDER=openai
 LLM_API_KEY=...
@@ -167,7 +172,7 @@ These seeded users are available for local development:
 - `alex / alex123` → Viewer
 - `jordan / jordan123` → Admin
 - `taylor / taylor123` → Owner
-- `morgan / morgan123` → Admin in child org
+- `morgan / morgan123` → Viewer
 
 ## Architecture Overview
 
@@ -201,6 +206,8 @@ The Angular shell keeps the existing UI layout. The main additions are:
 - task editor component for create/edit
 - JWT-aware auth service and interceptor
 - task registry and dashboard bound to live `/tasks` data
+- task sorting, filtering, category filtering, and status drag-drop controls
+- TailwindCSS enabled alongside the existing SCSS styling system
 
 ## Data Model
 
@@ -221,6 +228,12 @@ Supports a two-level hierarchy:
 
 - `name`
 - `permissions`
+- `structuredPermissions`
+
+#### Permission
+
+- `name`
+- `description`
 
 Roles:
 
@@ -425,6 +438,10 @@ New non-breaking additions:
 - task create/edit form
 - delete action
 - JWT storage and request attachment
+- client-side status/category filters
+- client-side task sorting
+- drag-and-drop status updates in the task registry
+- TailwindCSS configured without replacing the existing SCSS design system
 
 Existing views still work:
 
@@ -450,6 +467,20 @@ Current coverage added for:
 - RBAC guard
 - tasks controller behavior
 
+### Frontend
+
+Run:
+
+```bash
+npx jest --config apps/shell/jest.config.ts --runInBand
+```
+
+Current coverage added for:
+
+- shell bootstrap render
+- auth session persistence
+- task editor value normalization
+
 ### Type Check
 
 ```bash
@@ -462,7 +493,6 @@ npm run build
 - SQLite is used for the secure core system because it minimizes setup complexity for the challenge. PostgreSQL can replace it later without changing the controller contract.
 - Passwords are seeded in plaintext for local challenge setup. Production should use bcrypt or Argon2.
 - `synchronize: true` is enabled for TypeORM to simplify local setup. Production should use explicit migrations.
-- Legacy stub auth is still available behind `AUTH_STUB=true` only for temporary backward compatibility with older flows.
 - The AI/vector system still depends on PostgreSQL + pgvector if semantic chat features are required.
 
 ## Future Considerations
@@ -474,5 +504,4 @@ npm run build
 - RBAC result caching
 - more granular permission model beyond role-level permissions
 - production audit-log retention policies
-- drag-and-drop task interactions and richer task filters
 - scaling permission checks for large org trees

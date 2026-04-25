@@ -31,12 +31,12 @@ describe('AppComponent', () => {
 
   it('renders the dashboard shell', () => {
     const fixture = TestBed.createComponent(AppComponent);
-    spyOn(fixture.componentInstance, 'ngOnInit').and.stub();
+    jest.spyOn(fixture.componentInstance, 'ngOnInit').mockImplementation(() => undefined);
     fixture.detectChanges();
 
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.textContent).toContain('Dashboard');
-    expect(element.textContent).toContain('TaskAI');
+    expect(element.textContent).toContain('DASHBOARD');
+    expect(element.textContent).toContain('TASKAI');
   });
 
   afterEach(() => {

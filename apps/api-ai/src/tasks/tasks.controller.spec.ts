@@ -6,7 +6,6 @@ import { TasksController } from './tasks.controller';
 describe('TasksController', () => {
   beforeAll(() => {
     process.env.NODE_ENV = 'test';
-    process.env.AUTH_STUB = 'false';
     process.env.JWT_SECRET = 'test-secret';
     process.env.SEED_VECTOR_STORE = 'false';
   });

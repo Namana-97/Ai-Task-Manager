@@ -1,8 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { buildSeedTasks, seedOrganizations, seedRoles, seedUsers } from './seed-data';
-import { OrganizationEntity, RoleEntity, TaskEntity, UserEntity } from './entities';
+import { buildSeedTasks, seedOrganizations, seedPermissions, seedRoles, seedUsers } from './seed-data';
+import {
+  OrganizationEntity,
+  PermissionEntity,
+  RoleEntity,
+  TaskEntity,
+  UserEntity
+} from './entities';
 import { TaskPersistenceService } from '../repository/task-persistence.service';
 import { Task } from '../common/contracts';
 
@@ -15,6 +21,8 @@ export class DatabaseSeedService {
     private readonly organizations: Repository<OrganizationEntity>,
     @InjectRepository(RoleEntity)
     private readonly roles: Repository<RoleEntity>,
+    @InjectRepository(PermissionEntity)
+    private readonly permissions: Repository<PermissionEntity>,
     @InjectRepository(UserEntity)
     private readonly users: Repository<UserEntity>,
     @InjectRepository(TaskEntity)
@@ -32,9 +40,15 @@ export class DatabaseSeedService {
   }
 
   private async seed(): Promise<void> {
+    if ((await this.permissions.count()) === 0) {
+      await this.permissions.save(seedPermissions);
+    }
+
     if ((await this.roles.count()) === 0) {
       await this.roles.save(seedRoles);
     }
+
+    await this.syncRolePermissions();
 
     if ((await this.organizations.count()) === 0) {
       await this.organizations.save(seedOrganizations);
@@ -72,5 +86,19 @@ export class DatabaseSeedService {
 
   private async loadLegacyTasks(): Promise<Task[]> {
     return this.legacyTaskStore.loadTasks(buildSeedTasks());
+  }
+
+  private async syncRolePermissions(): Promise<void> {
+    const [roles, permissions] = await Promise.all([this.roles.find(), this.permissions.find()]);
+    const permissionMap = new Map(permissions.map((permission) => [permission.name, permission]));
+
+    await Promise.all(
+      roles.map(async (role) => {
+        role.structuredPermissions = role.permissions
+          .map((permissionName) => permissionMap.get(permissionName))
+          .filter((permission): permission is PermissionEntity => Boolean(permission));
+        await this.roles.save(role);
+      })
+    );
   }
 }

@@ -52,13 +52,12 @@ export class AuthService {
   private persistSession(session: AuthSession): void {
     localStorage.setItem('authToken', session.token);
     localStorage.setItem('authUser', JSON.stringify(session.user));
-    localStorage.removeItem('mockUser');
     this.sessionState.set(session);
   }
 
   private readSession(): AuthSession | null {
     const token = localStorage.getItem('authToken')?.trim();
-    if (!token || token === 'dev-stub-token') {
+    if (!token) {
       return null;
     }
 

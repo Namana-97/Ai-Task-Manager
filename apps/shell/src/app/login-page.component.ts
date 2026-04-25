@@ -8,9 +8,9 @@ import { AuthService } from './auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="login-shell">
-      <div class="login-panel">
-        <div class="login-brand">
+    <div class="login-shell min-h-screen px-8">
+      <div class="login-panel w-full max-w-[420px]">
+        <div class="login-brand space-y-1">
           <span class="login-title">TASKAI</span>
           <span class="login-subtitle">Secure Task Management System</span>
         </div>
@@ -33,11 +33,11 @@ import { AuthService } from './auth.service';
 
         <p class="login-error" *ngIf="error()">{{ error() }}</p>
 
-        <div class="login-hint">
+        <div class="login-hint mt-2 flex flex-wrap items-center gap-2">
           <span>Seed users:</span>
-          <code>jordan / jordan123 — Admin</code>
-          <code>taylor / taylor123 — Owner</code>
-          <code>alex / alex123 — Viewer</code>
+          <code class="inline-flex items-center rounded-full">jordan / jordan123 — Admin</code>
+          <code class="inline-flex items-center rounded-full">taylor / taylor123 — Owner</code>
+          <code class="inline-flex items-center rounded-full">alex / alex123 — Viewer</code>
         </div>
       </div>
     </div>

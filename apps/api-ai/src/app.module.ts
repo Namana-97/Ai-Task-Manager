@@ -29,6 +29,7 @@ import { ReportsService } from './reports/reports.service';
 import { InsightsController } from './insights/insights.controller';
 import { InsightsService } from './insights/insights.service';
 import { IntentsController } from './intents/intents.controller';
+import { IntentAuthorizationService } from './intents/intent-authorization.service';
 import { AppBootstrapService } from './app-bootstrap.service';
 import { TasksModule } from './tasks/tasks.module';
 import { TaskRepositoryStub } from './repository/task-repository.stub';
@@ -37,12 +38,13 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { RequestContextModule } from './common/request-context.module';
 import { RequestContextInterceptor } from './common/request-context.interceptor';
 import {
-  AuditLogEntity,
-  OrganizationEntity,
-  RoleEntity,
-  TaskEntity,
-  UserEntity
-} from './database/entities';
+      AuditLogEntity,
+      OrganizationEntity,
+      PermissionEntity,
+      RoleEntity,
+      TaskEntity,
+      UserEntity
+    } from './database/entities';
 import { join } from 'node:path';
 
 @Module({
@@ -54,7 +56,14 @@ import { join } from 'node:path';
         process.env.NODE_ENV === 'test'
           ? ':memory:'
           : process.env.CORE_DB_PATH ?? join(process.cwd(), 'apps/api-ai/data/core.sqlite'),
-      entities: [OrganizationEntity, RoleEntity, UserEntity, TaskEntity, AuditLogEntity],
+      entities: [
+        OrganizationEntity,
+        PermissionEntity,
+        RoleEntity,
+        UserEntity,
+        TaskEntity,
+        AuditLogEntity
+      ],
       synchronize: true
     }),
     RequestContextModule,
@@ -76,6 +85,7 @@ import { join } from 'node:path';
     GeminiKeyPool,
     InputSanitiser,
     InsightsService,
+    IntentAuthorizationService,
     LlmClient,
     OutputValidator,
     PromptLoader,

@@ -165,7 +165,7 @@ export class ChatService {
     }
 
     if (
-      /\b(all(?:\s+the)?\s+completed tasks|completed tasks|done tasks|tasks are done|tasks are completed|tasks which are done|tasks which are completed|what tasks are done|what tasks are completed|list completed tasks|show completed tasks)\b/.test(
+      /\b(all(?:\s+the)?\s+completed tasks|completed tasks|done tasks|tasks are done|tasks are completed|tasks which are done|tasks which are completed|what tasks are done|what tasks are completed|list completed tasks|show completed tasks|show the tasks in done|tasks in done)\b/.test(
         normalized
       )
     ) {

@@ -19,13 +19,13 @@ export interface TaskEditorValue {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="editor-panel">
-      <div class="editor-header">
+    <div class="editor-panel rounded-xl">
+      <div class="editor-header flex items-center justify-between">
         <span class="editor-title">{{ mode === 'create' ? 'Create Task' : 'Edit Task' }}</span>
         <button class="editor-action" type="button" (click)="cancelled.emit()">Close</button>
       </div>
 
-      <div class="editor-grid">
+      <div class="editor-grid grid gap-4">
         <label class="editor-field">
           <span>Title</span>
           <input [(ngModel)]="title" name="title" />
@@ -78,7 +78,7 @@ export interface TaskEditorValue {
         <input [(ngModel)]="tags" name="tags" placeholder="comma,separated,tags" />
       </label>
 
-      <div class="editor-footer">
+      <div class="editor-footer flex items-center justify-end">
         <button class="editor-action primary" type="button" (click)="submit()">Save</button>
       </div>
     </div>

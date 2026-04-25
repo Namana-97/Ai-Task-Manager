@@ -76,29 +76,6 @@ export class AuthService {
     return this.toAuthenticatedUser(user);
   }
 
-  async getLegacyStubUser(
-    authHeader?: string,
-    mockUserHeader?: string
-  ): Promise<AuthenticatedUser> {
-    await this.seedService.ensureSeeded();
-    const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
-    const requestedRole = mockUserHeader?.trim().toLowerCase();
-    const role: RoleName =
-      requestedRole === 'owner' || token === 'owner-token'
-        ? 'owner'
-        : requestedRole === 'viewer' || token === 'viewer-token'
-          ? 'viewer'
-          : 'admin';
-    const username =
-      role === 'owner' ? 'taylor' : role === 'viewer' ? 'alex' : 'jordan';
-    const user = await this.users.findOne({ where: { username } });
-    if (!user) {
-      throw new UnauthorizedException('Legacy stub user not found');
-    }
-
-    return this.toAuthenticatedUser(user);
-  }
-
   private async toAuthenticatedUser(user: UserEntity): Promise<AuthenticatedUser> {
     const childOrgIds =
       user.roleName === 'owner'

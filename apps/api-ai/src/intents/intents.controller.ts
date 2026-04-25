@@ -3,9 +3,11 @@ import { AnthropicIntentClassifier, TaskActionExecutor } from '@ai-task-manager/
 import { CurrentUser, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedUser } from '../common/contracts';
 import { ReportsService } from '../reports/reports.service';
+import { RbacGuard } from '../auth/rbac.guard';
+import { IntentAuthorizationService } from './intent-authorization.service';
 
 @Controller('intents')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RbacGuard)
 export class IntentsController {
   constructor(
     @Inject(AnthropicIntentClassifier)
@@ -13,7 +15,9 @@ export class IntentsController {
     @Inject(TaskActionExecutor)
     private readonly executor: TaskActionExecutor,
     @Inject(ReportsService)
-    private readonly reportsService: ReportsService
+    private readonly reportsService: ReportsService,
+    @Inject(IntentAuthorizationService)
+    private readonly intentAuthorization: IntentAuthorizationService
   ) {}
 
   @Post('classify')
@@ -26,6 +30,8 @@ export class IntentsController {
     @Body() body: { intent: Awaited<ReturnType<AnthropicIntentClassifier['classify']>> },
     @CurrentUser() user: AuthenticatedUser
   ) {
+    await this.intentAuthorization.authorize(body.intent, user);
+
     if (body.intent.type === 'status_report') {
       const scope =
         body.intent.parameters?.scope === 'team' ? 'team' : 'personal';

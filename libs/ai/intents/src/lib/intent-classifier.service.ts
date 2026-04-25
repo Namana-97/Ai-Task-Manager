@@ -452,6 +452,14 @@ Consider conversation history when resolving references like "that task" or "the
       };
     }
 
+    if (this.isReadOnlyTaskQuery(message)) {
+      return {
+        type: 'query',
+        confidence: 0.97,
+        requiresConfirmation: false
+      };
+    }
+
     return null;
   }
 
@@ -471,7 +479,7 @@ Consider conversation history when resolving references like "that task" or "the
 
   private extractStatusUpdate(message: string): TaskMutationParams | null {
     const patterns = [
-      /(?:change|update|set)\s+(?:the\s+)?status\s+(?:of\s+)?(task[-\s]?\d+)\s+(?:to|as)\s+([a-z ]+)/i,
+      /(?:change|update|set)\s+(?:the\s+)?status\s+(?:of\s+(?:the\s+)?)?(task[-\s]?\d+)\s+(?:to|as)\s+([a-z ]+)/i,
       /(?:mark|set)\s+(task[-\s]?\d+)\s+(?:to|as)\s+([a-z ]+)/i
     ];
 
@@ -492,6 +500,26 @@ Consider conversation history when resolving references like "that task" or "the
     }
 
     return null;
+  }
+
+  private isReadOnlyTaskQuery(message: string): boolean {
+    const normalized = message.trim().toLowerCase();
+    return (
+      /\bwhat did i finish last week\b/.test(normalized) ||
+      /\b(show|list)\s+(all\s+)?(the\s+)?tasks\b/.test(normalized) ||
+      /\b(overdue|past due)\b/.test(normalized) ||
+      /\b(in progress|currently in progress|tasks in progress|tasks are in progress|tasks which are in progress)\b/.test(
+        normalized
+      ) ||
+      /\b(pending|open tasks|tasks are pending|to do)\b/.test(normalized) ||
+      /\b(blocked tasks|tasks are blocked|which are blocked|show blocked tasks|list all blocked tasks)\b/.test(
+        normalized
+      ) ||
+      /\b(completed recently|finished recently|completed lately|recently completed)\b/.test(normalized) ||
+      /\b(all(?:\s+the)?\s+completed tasks|completed tasks|done tasks|tasks are done|tasks are completed|tasks which are done|tasks which are completed|what tasks are done|what tasks are completed|show the tasks in done)\b/.test(
+        normalized
+      )
+    );
   }
 
   private resolveModel(model: string): string {
