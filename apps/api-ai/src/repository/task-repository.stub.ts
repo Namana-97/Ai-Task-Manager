@@ -109,13 +109,14 @@ export class TaskRepositoryStub implements ITaskRepository, OnModuleInit {
     return scoped.find((task) => task.id === taskId);
   }
 
-  async findUpdatedSince(userId: string, orgId: string, since: Date): Promise<Task[]> {
+  async findUpdatedSince(userId: string, orgId: string | string[], since: Date): Promise<Task[]> {
     await this.ensureLoaded();
     const tasks = this.usesDatabase() ? await this.loadDbTasks() : this.tasks;
+    const orgIds = Array.isArray(orgId) ? orgId : [orgId];
     return tasks.filter(
       (task) =>
         task.updatedAt >= since &&
-        task.org.id === orgId &&
+        orgIds.includes(task.org.id) &&
         (task.assignee.id === userId || task.role !== 'viewer')
     );
   }

@@ -16,9 +16,15 @@ export class ReportsService {
   ) {}
 
   async generateStandup(user: AuthenticatedUser, scope: 'personal' | 'team' = 'personal') {
+    const orgScope =
+      user.role === 'owner'
+        ? user.childOrgIds?.length
+          ? user.childOrgIds
+          : [user.orgId]
+        : user.orgId;
     const tasks = await this.repository.findUpdatedSince(
       user.id,
-      user.orgId,
+      orgScope,
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     );
     const filtered =

@@ -38,7 +38,7 @@ export interface CreateTaskParams {
 
 export interface ITaskRepository {
   findByIds(ids: string[]): Promise<Task[]>;
-  findUpdatedSince(userId: string, orgId: string, since: Date): Promise<Task[]>;
+  findUpdatedSince(userId: string, orgId: string | string[], since: Date): Promise<Task[]>;
   findAll(scope: ScopeFilter): Promise<Task[]>;
   create(params: CreateTaskParams): Promise<Task>;
   update(taskId: string, params: Partial<CreateTaskParams>): Promise<Task>;
