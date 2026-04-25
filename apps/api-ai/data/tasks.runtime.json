@@ -1,0 +1,801 @@
+[
+  {
+    "id": "task-0022",
+    "title": "Update the database",
+    "description": "Perform necessary updates to the database schema and data.",
+    "category": "Database",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T00:29:16.016Z",
+    "updatedAt": "2026-04-25T00:29:16.016Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T00:29:16.016Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
+    "id": "task-0021",
+    "title": "101",
+    "description": "",
+    "category": "",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T00:28:56.628Z",
+    "updatedAt": "2026-04-25T00:28:56.628Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T00:28:56.628Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
+    "id": "task-0001",
+    "title": "Fix sprint burndown chart timezone drift",
+    "description": "Fix sprint burndown chart timezone drift with production-grade follow-through for the AI task management submission.",
+    "category": "Analytics",
+    "status": "In Progress",
+    "priority": "Critical",
+    "createdAt": "2026-04-17T12:00:00.000Z",
+    "updatedAt": "2026-04-20T12:00:00.000Z",
+    "dueDate": "2026-04-22T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "analytics",
+      "in-progress"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-18T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-20T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to In Progress",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0002",
+    "title": "Prepare Q2 roadmap review deck",
+    "description": "Prepare Q2 roadmap review deck with production-grade follow-through for the AI task management submission.",
+    "category": "Planning",
+    "status": "Done",
+    "priority": "High",
+    "createdAt": "2026-04-19T12:00:00.000Z",
+    "updatedAt": "2026-04-22T12:00:00.000Z",
+    "dueDate": "2026-04-24T12:00:00.000Z",
+    "assignee": {
+      "id": "user-003",
+      "name": "Taylor Kim",
+      "role": "Product Manager"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "planning",
+      "done"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-20T12:00:00.000Z",
+        "actorName": "Taylor Kim",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-22T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Done",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0003",
+    "title": "Investigate flaky websocket reconnect test",
+    "description": "Investigate flaky websocket reconnect test with production-grade follow-through for the AI task management submission.",
+    "category": "Platform",
+    "status": "Blocked",
+    "priority": "Medium",
+    "createdAt": "2026-04-14T12:00:00.000Z",
+    "updatedAt": "2026-04-17T12:00:00.000Z",
+    "dueDate": "2026-04-19T12:00:00.000Z",
+    "assignee": {
+      "id": "user-004",
+      "name": "Morgan Patel",
+      "role": "QA Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "platform",
+      "blocked"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-15T12:00:00.000Z",
+        "actorName": "Morgan Patel",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-17T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Blocked",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0004",
+    "title": "Refine onboarding checklist for enterprise trial",
+    "description": "Refine onboarding checklist for enterprise trial with production-grade follow-through for the AI task management submission.",
+    "category": "Operations",
+    "status": "Open",
+    "priority": "Low",
+    "createdAt": "2026-04-16T12:00:00.000Z",
+    "updatedAt": "2026-04-19T12:00:00.000Z",
+    "dueDate": "2026-04-21T12:00:00.000Z",
+    "assignee": {
+      "id": "user-003",
+      "name": "Taylor Kim",
+      "role": "Product Manager"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "operations",
+      "open"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-17T12:00:00.000Z",
+        "actorName": "Taylor Kim",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-19T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Open",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0005",
+    "title": "Ship keyboard navigation for task drawer",
+    "description": "Ship keyboard navigation for task drawer with production-grade follow-through for the AI task management submission.",
+    "category": "UX",
+    "status": "Done",
+    "priority": "Critical",
+    "createdAt": "2026-04-18T12:00:00.000Z",
+    "updatedAt": "2026-04-21T12:00:00.000Z",
+    "dueDate": "2026-04-23T12:00:00.000Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Frontend Lead"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "ux",
+      "done"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-19T12:00:00.000Z",
+        "actorName": "Alex Rivera",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-21T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Done",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0006",
+    "title": "Reduce API p95 latency for /tasks/search",
+    "description": "Reduce API p95 latency for /tasks/search with production-grade follow-through for the AI task management submission.",
+    "category": "Platform",
+    "status": "In Progress",
+    "priority": "High",
+    "createdAt": "2026-04-04T12:00:00.000Z",
+    "updatedAt": "2026-04-07T12:00:00.000Z",
+    "dueDate": "2026-04-09T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "platform",
+      "in-progress"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-05T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-07T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to In Progress",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0007",
+    "title": "Backfill audit logs for overdue task escalations",
+    "description": "Backfill audit logs for overdue task escalations with production-grade follow-through for the AI task management submission.",
+    "category": "Compliance",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-13T12:00:00.000Z",
+    "updatedAt": "2026-04-16T12:00:00.000Z",
+    "dueDate": "2026-04-18T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "compliance",
+      "open"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-14T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-16T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Open",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0008",
+    "title": "Design blocked-state empty view",
+    "description": "Design blocked-state empty view with production-grade follow-through for the AI task management submission.",
+    "category": "Design",
+    "status": "In Progress",
+    "priority": "Low",
+    "createdAt": "2026-04-12T12:00:00.000Z",
+    "updatedAt": "2026-04-15T12:00:00.000Z",
+    "dueDate": "2026-04-17T12:00:00.000Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Frontend Lead"
+    },
+    "org": {
+      "id": "org-design",
+      "name": "Acme Design"
+    },
+    "tags": [
+      "design",
+      "in-progress"
+    ],
+    "role": "owner",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-13T12:00:00.000Z",
+        "actorName": "Alex Rivera",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-15T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to In Progress",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0009",
+    "title": "Create regression suite for recurring tasks",
+    "description": "Create regression suite for recurring tasks with production-grade follow-through for the AI task management submission.",
+    "category": "QA",
+    "status": "Done",
+    "priority": "Critical",
+    "createdAt": "2026-04-18T12:00:00.000Z",
+    "updatedAt": "2026-04-21T12:00:00.000Z",
+    "dueDate": "2026-04-23T12:00:00.000Z",
+    "assignee": {
+      "id": "user-004",
+      "name": "Morgan Patel",
+      "role": "QA Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "qa",
+      "done"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-19T12:00:00.000Z",
+        "actorName": "Morgan Patel",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-21T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Done",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0010",
+    "title": "Resolve SSO callback mismatch for sandbox orgs",
+    "description": "Resolve SSO callback mismatch for sandbox orgs with production-grade follow-through for the AI task management submission.",
+    "category": "Security",
+    "status": "Blocked",
+    "priority": "High",
+    "createdAt": "2026-04-10T12:00:00.000Z",
+    "updatedAt": "2026-04-13T12:00:00.000Z",
+    "dueDate": "2026-04-15T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "security",
+      "blocked"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-11T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-13T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Blocked",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0011",
+    "title": "Tune notification digest batching job",
+    "description": "Tune notification digest batching job with production-grade follow-through for the AI task management submission.",
+    "category": "Platform",
+    "status": "Done",
+    "priority": "Medium",
+    "createdAt": "2026-04-15T12:00:00.000Z",
+    "updatedAt": "2026-04-18T12:00:00.000Z",
+    "dueDate": "2026-04-20T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "platform",
+      "done"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-16T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-18T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Done",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0012",
+    "title": "Document RBAC edge cases for support",
+    "description": "Document RBAC edge cases for support with production-grade follow-through for the AI task management submission.",
+    "category": "Support",
+    "status": "Open",
+    "priority": "Low",
+    "createdAt": "2026-04-11T12:00:00.000Z",
+    "updatedAt": "2026-04-14T12:00:00.000Z",
+    "dueDate": "2026-04-16T12:00:00.000Z",
+    "assignee": {
+      "id": "user-003",
+      "name": "Taylor Kim",
+      "role": "Product Manager"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "support",
+      "open"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-12T12:00:00.000Z",
+        "actorName": "Taylor Kim",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-14T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Open",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0013",
+    "title": "Patch stale Prisma migration in demo seed path",
+    "description": "Patch stale Prisma migration in demo seed path with production-grade follow-through for the AI task management submission.",
+    "category": "Infrastructure",
+    "status": "In Progress",
+    "priority": "Critical",
+    "createdAt": "2026-04-05T12:00:00.000Z",
+    "updatedAt": "2026-04-08T12:00:00.000Z",
+    "dueDate": "2026-04-10T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "infrastructure",
+      "in-progress"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-06T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-08T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to In Progress",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0014",
+    "title": "Polish mobile task details drawer spacing",
+    "description": "Polish mobile task details drawer spacing with production-grade follow-through for the AI task management submission.",
+    "category": "UX",
+    "status": "Done",
+    "priority": "High",
+    "createdAt": "2026-04-19T12:00:00.000Z",
+    "updatedAt": "2026-04-22T12:00:00.000Z",
+    "dueDate": "2026-04-24T12:00:00.000Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Frontend Lead"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "ux",
+      "done"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-20T12:00:00.000Z",
+        "actorName": "Alex Rivera",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-22T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Done",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0015",
+    "title": "Audit third-party webhook retries",
+    "description": "Audit third-party webhook retries with production-grade follow-through for the AI task management submission.",
+    "category": "Security",
+    "status": "In Progress",
+    "priority": "Medium",
+    "createdAt": "2026-04-08T12:00:00.000Z",
+    "updatedAt": "2026-04-11T12:00:00.000Z",
+    "dueDate": "2026-04-13T12:00:00.000Z",
+    "assignee": {
+      "id": "user-004",
+      "name": "Morgan Patel",
+      "role": "QA Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "security",
+      "in-progress"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-09T12:00:00.000Z",
+        "actorName": "Morgan Patel",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-11T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to In Progress",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0016",
+    "title": "Write release notes for April sprint closeout",
+    "description": "Write release notes for April sprint closeout with production-grade follow-through for the AI task management submission.",
+    "category": "Planning",
+    "status": "Open",
+    "priority": "Low",
+    "createdAt": "2026-04-20T12:00:00.000Z",
+    "updatedAt": "2026-04-22T12:00:00.000Z",
+    "dueDate": "2026-04-25T12:00:00.000Z",
+    "assignee": {
+      "id": "user-003",
+      "name": "Taylor Kim",
+      "role": "Product Manager"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "planning",
+      "open"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-21T12:00:00.000Z",
+        "actorName": "Taylor Kim",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-22T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Open",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0018",
+    "title": "Improve semantic search relevance sampling",
+    "description": "Improve semantic search relevance sampling with production-grade follow-through for the AI task management submission.",
+    "category": "AI",
+    "status": "In Progress",
+    "priority": "High",
+    "createdAt": "2026-04-16T12:00:00.000Z",
+    "updatedAt": "2026-04-19T12:00:00.000Z",
+    "dueDate": "2026-04-21T12:00:00.000Z",
+    "assignee": {
+      "id": "user-002",
+      "name": "Jordan Lee",
+      "role": "Backend Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "ai",
+      "in-progress"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-17T12:00:00.000Z",
+        "actorName": "Jordan Lee",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-19T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to In Progress",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0019",
+    "title": "Sync design tokens with shell preview app",
+    "description": "Sync design tokens with shell preview app with production-grade follow-through for the AI task management submission.",
+    "category": "Design",
+    "status": "Done",
+    "priority": "Medium",
+    "createdAt": "2026-04-17T12:00:00.000Z",
+    "updatedAt": "2026-04-20T12:00:00.000Z",
+    "dueDate": "2026-04-22T12:00:00.000Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Frontend Lead"
+    },
+    "org": {
+      "id": "org-design",
+      "name": "Acme Design"
+    },
+    "tags": [
+      "design",
+      "done"
+    ],
+    "role": "owner",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-18T12:00:00.000Z",
+        "actorName": "Alex Rivera",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-20T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Done",
+        "details": "Workflow automation sync"
+      }
+    ]
+  },
+  {
+    "id": "task-0020",
+    "title": "Add post-release anomaly dashboard drilldowns",
+    "description": "Add post-release anomaly dashboard drilldowns with production-grade follow-through for the AI task management submission.",
+    "category": "Analytics",
+    "status": "Open",
+    "priority": "Low",
+    "createdAt": "2026-04-06T12:00:00.000Z",
+    "updatedAt": "2026-04-09T12:00:00.000Z",
+    "dueDate": "2026-04-11T12:00:00.000Z",
+    "assignee": {
+      "id": "user-003",
+      "name": "Taylor Kim",
+      "role": "Product Manager"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "analytics",
+      "open"
+    ],
+    "role": "admin",
+    "activityLog": [
+      {
+        "timestamp": "2026-04-07T12:00:00.000Z",
+        "actorName": "Taylor Kim",
+        "action": "created task",
+        "details": "Initial triage completed"
+      },
+      {
+        "timestamp": "2026-04-09T12:00:00.000Z",
+        "actorName": "System",
+        "action": "moved to Open",
+        "details": "Workflow automation sync"
+      }
+    ]
+  }
+]

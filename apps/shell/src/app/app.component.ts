@@ -2,6 +2,7 @@ import { AfterViewInit, Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChatPanelComponent } from '@task-ai/ui-chat';
+import { ApiTask, TasksApiService } from './tasks-api.service';
 
 interface Insight {
   type: string;
@@ -1112,7 +1113,10 @@ export class AppComponent implements OnInit, AfterViewInit {
     owner: { name: 'Carol Owner' }
   };
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly tasksApi: TasksApiService
+  ) {}
 
   ngOnInit() {
     this.startClock();
@@ -1152,21 +1156,20 @@ export class AppComponent implements OnInit, AfterViewInit {
       error: () => {}
     });
 
-    this.http.get('/chat/history?limit=1').subscribe({
-      next: () => {
-        this.tasks.set([
-          { id: 'task-0031', title: 'OAuth migration — finalize token refresh flow', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Jane' } },
-          { id: 'task-0027', title: 'Ship new dashboard layout v2', status: 'Done', category: 'Work → Design', assignee: { name: 'Alex' } },
-          { id: 'task-0044', title: 'API Refactor — v2 endpoints', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Dave' } },
-          { id: 'task-0038', title: 'Patch XSS vulnerability in comments', status: 'Done', category: 'Work → Security', assignee: { name: 'Jane' } },
-          { id: 'task-0041', title: 'Database migration — schema v3', status: 'Blocked', category: 'Work → Infra', assignee: { name: 'Bob' } },
-          { id: 'task-0019', title: 'Write unit tests for auth module', status: 'To Do', category: 'Work → Engineering', assignee: { name: 'Alex' } }
-        ]);
-        this.selectedTaskId.set(this.tasks()[0]?.id ?? null);
+    this.tasksApi.listTasks().subscribe({
+      next: (tasks) => {
+        const mapped = tasks.map((task) => this.toTaskSummary(task));
+        this.tasks.set(mapped);
+        this.selectedTaskId.set(mapped[0]?.id ?? null);
+        this.backendOnline.set(true);
         this.updateMetrics();
         this.tasksLoading.set(false);
       },
       error: () => {
+        const fallback = this.fallbackTasks();
+        this.tasks.set(fallback);
+        this.selectedTaskId.set(fallback[0]?.id ?? null);
+        this.updateMetrics();
         this.tasksLoading.set(false);
       }
     });
@@ -1232,6 +1235,38 @@ export class AppComponent implements OnInit, AfterViewInit {
   onTaskSelected(taskId: string) {
     this.selectedTaskId.set(taskId);
     this.setView('tasks');
+    if (this.tasks().some((task) => task.id === taskId)) {
+      this.highlightTask(taskId);
+      return;
+    }
+
+    this.tasksApi.getTask(taskId).subscribe({
+      next: (task) => {
+        this.tasks.update((current) => {
+          if (current.some((entry) => entry.id === task.id)) {
+            return current;
+          }
+          return [this.toTaskSummary(task), ...current];
+        });
+        this.updateMetrics();
+        this.highlightTask(taskId);
+      },
+      error: () => {
+        this.highlightTask(taskId);
+      }
+    });
+  }
+
+  private mdToHtml(md: string): string {
+    if (!md) return '';
+    return md
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+      .replace(/\n{2,}/g, '<br><br>');
+  }
+
+  private highlightTask(taskId: string): void {
     setTimeout(() => {
       const element = document.querySelector(`[data-task-id="${taskId}"]`);
       if (element) {
@@ -1242,12 +1277,25 @@ export class AppComponent implements OnInit, AfterViewInit {
     }, 100);
   }
 
-  private mdToHtml(md: string): string {
-    if (!md) return '';
-    return md
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
-      .replace(/\n{2,}/g, '<br><br>');
+  private toTaskSummary(task: ApiTask): Task {
+    return {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      category: task.category,
+      assignee: task.assignee ? { name: task.assignee.name } : undefined,
+      priority: task.priority
+    };
+  }
+
+  private fallbackTasks(): Task[] {
+    return [
+      { id: 'task-0031', title: 'OAuth migration — finalize token refresh flow', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Jane' } },
+      { id: 'task-0027', title: 'Ship new dashboard layout v2', status: 'Done', category: 'Work → Design', assignee: { name: 'Alex' } },
+      { id: 'task-0044', title: 'API Refactor — v2 endpoints', status: 'In Progress', category: 'Work → Engineering', assignee: { name: 'Dave' } },
+      { id: 'task-0038', title: 'Patch XSS vulnerability in comments', status: 'Done', category: 'Work → Security', assignee: { name: 'Jane' } },
+      { id: 'task-0041', title: 'Database migration — schema v3', status: 'Blocked', category: 'Work → Infra', assignee: { name: 'Bob' } },
+      { id: 'task-0019', title: 'Write unit tests for auth module', status: 'To Do', category: 'Work → Engineering', assignee: { name: 'Alex' } }
+    ];
   }
 }

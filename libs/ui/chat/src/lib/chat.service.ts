@@ -181,9 +181,10 @@ export class ChatService {
   }
 
   private requestHeaders(): HeadersInit {
+    const authToken = localStorage.getItem('authToken')?.trim() || 'dev-stub-token';
     return {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer dev-stub-token',
+      Authorization: `Bearer ${authToken}`,
       'X-Mock-User': localStorage.getItem('mockUser') ?? 'admin'
     };
   }

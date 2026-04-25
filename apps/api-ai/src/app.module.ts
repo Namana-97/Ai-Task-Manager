@@ -20,18 +20,18 @@ import { ChatService } from './chat/chat.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { DatabaseService } from './database/database.service';
 import { ChatHistoryService } from './history/chat-history.service';
-import { TaskRepositoryStub } from './repository/task-repository.stub';
 import { CategorizationFeedbackRepository } from './repository/categorization-feedback.repository';
-import { TaskIndexingService } from './repository/task-indexing.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { InsightsController } from './insights/insights.controller';
 import { InsightsService } from './insights/insights.service';
 import { IntentsController } from './intents/intents.controller';
 import { AppBootstrapService } from './app-bootstrap.service';
+import { TasksModule } from './tasks/tasks.module';
+import { TaskRepositoryStub } from './repository/task-repository.stub';
 
 @Module({
-  imports: [ScheduleModule.forRoot()],
+  imports: [ScheduleModule.forRoot(), TasksModule],
   controllers: [ChatController, ReportsController, InsightsController, IntentsController],
   providers: [
     AppBootstrapService,
@@ -52,8 +52,6 @@ import { AppBootstrapService } from './app-bootstrap.service';
     ReportsService,
     SlidingWindowRateLimiter,
     TaskActionExecutor,
-    TaskIndexingService,
-    TaskRepositoryStub,
     CategorizationFeedbackRepository,
     VectorStoreClient,
     AnthropicIntentClassifier,

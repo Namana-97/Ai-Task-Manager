@@ -1,14 +1,24 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ITaskRepository, Task, CreateTaskParams } from '../common/contracts';
 import { TaskIndexingService } from './task-indexing.service';
+import { TaskPersistenceService } from './task-persistence.service';
 
 @Injectable()
 export class TaskRepositoryStub implements ITaskRepository {
-  private readonly tasks = seedTasks();
+  private tasks: Task[] = [];
+  private loadingPromise: Promise<void> | null = null;
 
-  constructor(@Inject(TaskIndexingService) private readonly taskIndexing: TaskIndexingService) {}
+  constructor(
+    @Inject(TaskIndexingService)
+    private readonly taskIndexing: TaskIndexingService,
+    @Optional()
+    @Inject(TaskPersistenceService)
+    private readonly persistence?: TaskPersistenceService
+  ) {}
 
   async seedVectorStore(): Promise<void> {
+    await this.ensureLoaded();
+
     if (process.env.SEED_VECTOR_STORE !== 'true') {
       return;
     }
@@ -17,10 +27,26 @@ export class TaskRepositoryStub implements ITaskRepository {
   }
 
   async findByIds(ids: string[]): Promise<Task[]> {
+    await this.ensureLoaded();
     return this.tasks.filter((task) => ids.includes(task.id));
   }
 
+  async findById(
+    taskId: string,
+    scope?: { orgId: string; userId: string; role: 'viewer' | 'admin' | 'owner'; childOrgIds?: string[] }
+  ): Promise<Task | undefined> {
+    await this.ensureLoaded();
+
+    if (!scope) {
+      return this.tasks.find((task) => task.id === taskId);
+    }
+
+    const scoped = await this.findAll(scope);
+    return scoped.find((task) => task.id === taskId);
+  }
+
   async findUpdatedSince(userId: string, orgId: string, since: Date): Promise<Task[]> {
+    await this.ensureLoaded();
     return this.tasks.filter(
       (task) =>
         task.updatedAt >= since &&
@@ -30,6 +56,7 @@ export class TaskRepositoryStub implements ITaskRepository {
   }
 
   async findAll(scope: { orgId: string; userId: string; role: 'viewer' | 'admin' | 'owner'; childOrgIds?: string[] }): Promise<Task[]> {
+    await this.ensureLoaded();
     if (scope.role === 'viewer') {
       return this.tasks.filter((task) => task.org.id === scope.orgId && task.assignee.id === scope.userId);
     }
@@ -41,9 +68,10 @@ export class TaskRepositoryStub implements ITaskRepository {
   }
 
   async create(params: CreateTaskParams): Promise<Task> {
+    await this.ensureLoaded();
     const now = new Date();
     const task: Task = {
-      id: `task-${String(this.tasks.length + 1).padStart(4, '0')}`,
+      id: nextTaskId(this.tasks),
       title: params.title,
       description: params.description,
       category: params.category ?? 'General',
@@ -66,11 +94,13 @@ export class TaskRepositoryStub implements ITaskRepository {
       role: 'admin'
     };
     this.tasks.unshift(task);
+    await this.persistTasks();
     await this.taskIndexing.indexTask(task);
     return task;
   }
 
   async update(taskId: string, params: Partial<CreateTaskParams>): Promise<Task> {
+    await this.ensureLoaded();
     const task = this.tasks.find((entry) => entry.id === taskId);
     if (!task) {
       throw new Error(`Task not found: ${taskId}`);
@@ -108,17 +138,59 @@ export class TaskRepositoryStub implements ITaskRepository {
       action: 'updated task',
       details: 'Updated through task mutation flow'
     });
+    await this.persistTasks();
     await this.taskIndexing.indexTask(task);
     return task;
   }
 
   async delete(taskId: string): Promise<void> {
+    await this.ensureLoaded();
     const index = this.tasks.findIndex((task) => task.id === taskId);
     if (index >= 0) {
       this.tasks.splice(index, 1);
+      await this.persistTasks();
       await this.taskIndexing.removeTask(taskId);
     }
   }
+
+  private async ensureLoaded(): Promise<void> {
+    if (this.tasks.length > 0) {
+      return;
+    }
+
+    if (!this.loadingPromise) {
+      this.loadingPromise = this.loadTasks();
+    }
+
+    await this.loadingPromise;
+  }
+
+  private async loadTasks(): Promise<void> {
+    const seeded = seedTasks();
+    if (!this.persistence) {
+      this.tasks = seeded;
+      return;
+    }
+
+    this.tasks = await this.persistence.load(seeded);
+  }
+
+  private async persistTasks(): Promise<void> {
+    if (!this.persistence) {
+      return;
+    }
+
+    await this.persistence.save(this.tasks);
+  }
+}
+
+function nextTaskId(tasks: Task[]): string {
+  const max = tasks.reduce((highest, task) => {
+    const parsed = Number(task.id.replace(/^task-/, ''));
+    return Number.isFinite(parsed) ? Math.max(highest, parsed) : highest;
+  }, 0);
+
+  return `task-${String(max + 1).padStart(4, '0')}`;
 }
 
 function seedTasks(): Task[] {

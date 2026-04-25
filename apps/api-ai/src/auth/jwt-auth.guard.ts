@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
   createParamDecorator
 } from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AuthenticatedUser } from '../common/contracts';
 
 @Injectable()
@@ -14,18 +15,24 @@ export class JwtAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization as string | undefined;
     const mockUserHeader = request.headers['x-mock-user'] as string | undefined;
     const isStub = process.env.AUTH_STUB !== 'false';
+    const bearerToken = authHeader?.replace(/^Bearer\s+/i, '').trim();
 
-    if (isStub) {
+    if (!bearerToken) {
       request.user = parseStubUser(authHeader, mockUserHeader);
       return true;
     }
 
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing bearer token');
+    if (isJwtLike(bearerToken) && process.env.JWT_SECRET) {
+      request.user = verifyJwtUser(bearerToken, process.env.JWT_SECRET);
+      return true;
     }
 
-    request.user = parseStubUser(authHeader, mockUserHeader);
-    return true;
+    if (isStub || !isJwtLike(bearerToken)) {
+      request.user = parseStubUser(authHeader, mockUserHeader);
+      return true;
+    }
+
+    throw new UnauthorizedException('Invalid bearer token');
   }
 }
 
@@ -59,4 +66,83 @@ function parseStubUser(authHeader?: string, mockUserHeader?: string): Authentica
     role,
     childOrgIds: ['org-root', 'org-design']
   };
+}
+
+function isJwtLike(token: string): boolean {
+  return token.split('.').length === 3;
+}
+
+function verifyJwtUser(token: string, secret: string): AuthenticatedUser {
+  const [encodedHeader, encodedPayload, signature] = token.split('.');
+  if (!encodedHeader || !encodedPayload || !signature) {
+    throw new UnauthorizedException('Malformed JWT');
+  }
+
+  const header = parseJwtSection(encodedHeader) as { alg?: string; typ?: string };
+  if (header.alg !== 'HS256') {
+    throw new UnauthorizedException('Unsupported JWT algorithm');
+  }
+
+  const expectedSignature = createHmac('sha256', secret)
+    .update(`${encodedHeader}.${encodedPayload}`)
+    .digest('base64url');
+
+  if (!safeEquals(signature, expectedSignature)) {
+    throw new UnauthorizedException('JWT signature mismatch');
+  }
+
+  const payload = parseJwtSection(encodedPayload) as JwtPayload;
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp === 'number' && payload.exp < now) {
+    throw new UnauthorizedException('JWT expired');
+  }
+
+  return {
+    id: payload.sub ?? payload.userId ?? payload.id ?? 'jwt-user',
+    orgId: payload.orgId ?? 'org-root',
+    orgName: payload.orgName ?? 'Acme Product',
+    role: normalizeRole(payload.role),
+    childOrgIds: Array.isArray(payload.childOrgIds)
+      ? payload.childOrgIds.filter((value): value is string => typeof value === 'string')
+      : [payload.orgId ?? 'org-root']
+  };
+}
+
+function parseJwtSection(value: string): unknown {
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+  } catch {
+    throw new UnauthorizedException('Malformed JWT payload');
+  }
+}
+
+function safeEquals(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function normalizeRole(role: unknown): AuthenticatedUser['role'] {
+  if (role === 'viewer' || role === 'owner') {
+    return role;
+  }
+
+  return 'admin';
+}
+
+interface JwtPayload {
+  sub?: string;
+  userId?: string;
+  id?: string;
+  orgId?: string;
+  orgName?: string;
+  role?: string;
+  childOrgIds?: string[];
+  exp?: number;
 }
