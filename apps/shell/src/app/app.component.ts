@@ -2,6 +2,7 @@ import { AfterViewInit, Component, OnDestroy, OnInit, signal } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChatPanelComponent } from '@task-ai/ui-chat';
+import { ChatService } from '@task-ai/ui-chat';
 import { ApiTask, TaskMutationInput, TasksApiService } from './tasks-api.service';
 import { AuthService } from './auth.service';
 import { LoginPageComponent } from './login-page.component';
@@ -143,6 +144,7 @@ interface Task {
               <span class="chip-dot"></span>
               <span class="chip-text">{{ backendOnline() ? 'CONNECTED' : 'OFFLINE' }}</span>
             </div>
+            <button class="refresh-btn" type="button" (click)="logout()">LOG OUT</button>
             <div class="header-time">{{ currentTime() }}</div>
           </div>
         </header>
@@ -1142,7 +1144,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private readonly http: HttpClient,
     private readonly tasksApi: TasksApiService,
-    private readonly auth: AuthService
+    private readonly auth: AuthService,
+    private readonly chatService: ChatService
   ) {}
 
   ngOnInit() {
@@ -1278,10 +1281,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onLoggedIn(): void {
-    this.applyAuthenticatedUser();
-    this.checkBackend();
-    this.loadTasks();
-    this.loadInsights();
+    this.resetChatState();
+    this.chatService.clearHistory().subscribe({
+      next: () => this.bootstrapAuthenticatedSession(),
+      error: () => this.bootstrapAuthenticatedSession()
+    });
   }
 
   isAuthenticated(): boolean {
@@ -1290,6 +1294,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   currentUserName(): string {
     return this.auth.currentUser()?.name ?? this.roleUsers[this.currentRole()].name;
+  }
+
+  logout(): void {
+    this.resetChatState();
+    this.chatService.clearHistory().subscribe({
+      next: () => this.finishLogout(),
+      error: () => this.finishLogout()
+    });
   }
 
   onTaskSelected(taskId: string) {
@@ -1420,5 +1432,33 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.currentRole.set(user.role);
     this.roleUsers[user.role] = { name: user.name };
+  }
+
+  private bootstrapAuthenticatedSession(): void {
+    this.applyAuthenticatedUser();
+    this.checkBackend();
+    this.loadTasks();
+    this.loadInsights();
+  }
+
+  private finishLogout(): void {
+    this.auth.logout();
+    this.backendOnline.set(false);
+    this.tasks.set([]);
+    this.insights.set([]);
+    this.standup.set(null);
+    this.selectedTaskId.set(null);
+    this.metricsList.set([]);
+    this.taskFormMode.set(null);
+    this.taskEditorTask.set(null);
+    this.activeView.set('dashboard');
+    this.tasksLoading.set(false);
+    this.insightsLoading.set(false);
+    this.standupLoading.set(false);
+  }
+
+  private resetChatState(): void {
+    this.chatService.clearConversation();
+    sessionStorage.setItem('skipChatHistoryLoad', 'true');
   }
 }

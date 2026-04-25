@@ -507,7 +507,7 @@ export class ChatPanelComponent {
   readonly messages = signal<ChatMessage[]>([]);
   readonly draft = signal('');
   readonly pendingConfirmation = signal<{ message: string; intent: unknown } | null>(null);
-  readonly skipHistoryLoad = signal(false);
+  readonly skipHistoryLoad = signal(readSkipHistoryPreference());
   readonly showHistoryDivider = computed(() => {
     const messages = this.messages();
     return messages.length > 0 && messages.some((message) => message.isHistorical) && messages.some((message) => !message.isHistorical);
@@ -541,6 +541,7 @@ export class ChatPanelComponent {
     this.messages.set([]);
     this.pendingConfirmation.set(null);
     this.skipHistoryLoad.set(true);
+    writeSkipHistoryPreference(true);
     this.chatService.clearConversation();
     this.chatService.clearHistory().subscribe({
       next: () => {},
@@ -551,6 +552,7 @@ export class ChatPanelComponent {
   send(message: string, pendingIntent?: unknown): void {
     this.openPanel();
     this.skipHistoryLoad.set(false);
+    writeSkipHistoryPreference(false);
     const isConfirmation = message === '__CONFIRM__' && !!pendingIntent;
     const assistantMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -819,4 +821,17 @@ export class ChatPanelComponent {
       .map((sentence) => sentence.trim())
       .filter(Boolean);
   }
+}
+
+function readSkipHistoryPreference(): boolean {
+  return sessionStorage.getItem('skipChatHistoryLoad') === 'true';
+}
+
+function writeSkipHistoryPreference(value: boolean): void {
+  if (value) {
+    sessionStorage.setItem('skipChatHistoryLoad', 'true');
+    return;
+  }
+
+  sessionStorage.removeItem('skipChatHistoryLoad');
 }
