@@ -1,5 +1,97 @@
 [
   {
+    "id": "task-0025",
+    "title": "Very long validation scenario for notification retry policy",
+    "category": "General",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T00:52:09.472Z",
+    "updatedAt": "2026-04-25T00:52:09.472Z",
+    "dueDate": "2023-11-30T00:00:00.000Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "reliability",
+      "alerts"
+    ],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T00:52:09.472Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
+    "id": "task-0024",
+    "title": "Very long validation scenario for notification retry policy",
+    "category": "General",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T00:47:31.013Z",
+    "updatedAt": "2026-04-25T00:47:31.013Z",
+    "dueDate": "2023-11-30T00:00:00.000Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [
+      "reliability",
+      "alerts"
+    ],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T00:47:31.013Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
+    "id": "task-0023",
+    "title": "Audit retry policy for webhooks",
+    "category": "General",
+    "status": "Open",
+    "priority": "Medium",
+    "createdAt": "2026-04-25T00:44:39.228Z",
+    "updatedAt": "2026-04-25T00:44:39.228Z",
+    "assignee": {
+      "id": "user-001",
+      "name": "Alex Rivera",
+      "role": "Engineer"
+    },
+    "org": {
+      "id": "org-root",
+      "name": "Acme Product"
+    },
+    "tags": [],
+    "activityLog": [
+      {
+        "timestamp": "2026-04-25T00:44:39.228Z",
+        "actorName": "AI Assistant",
+        "action": "created task",
+        "details": "Created through task mutation flow"
+      }
+    ],
+    "role": "admin"
+  },
+  {
     "id": "task-0022",
     "title": "Update the database",
     "description": "Perform necessary updates to the database schema and data.",
@@ -136,45 +228,6 @@
     ]
   },
   {
-    "id": "task-0003",
-    "title": "Investigate flaky websocket reconnect test",
-    "description": "Investigate flaky websocket reconnect test with production-grade follow-through for the AI task management submission.",
-    "category": "Platform",
-    "status": "Blocked",
-    "priority": "Medium",
-    "createdAt": "2026-04-14T12:00:00.000Z",
-    "updatedAt": "2026-04-17T12:00:00.000Z",
-    "dueDate": "2026-04-19T12:00:00.000Z",
-    "assignee": {
-      "id": "user-004",
-      "name": "Morgan Patel",
-      "role": "QA Engineer"
-    },
-    "org": {
-      "id": "org-root",
-      "name": "Acme Product"
-    },
-    "tags": [
-      "platform",
-      "blocked"
-    ],
-    "role": "admin",
-    "activityLog": [
-      {
-        "timestamp": "2026-04-15T12:00:00.000Z",
-        "actorName": "Morgan Patel",
-        "action": "created task",
-        "details": "Initial triage completed"
-      },
-      {
-        "timestamp": "2026-04-17T12:00:00.000Z",
-        "actorName": "System",
-        "action": "moved to Blocked",
-        "details": "Workflow automation sync"
-      }
-    ]
-  },
-  {
     "id": "task-0004",
     "title": "Refine onboarding checklist for enterprise trial",
     "description": "Refine onboarding checklist for enterprise trial with production-grade follow-through for the AI task management submission.",
@@ -260,7 +313,7 @@
     "status": "In Progress",
     "priority": "High",
     "createdAt": "2026-04-04T12:00:00.000Z",
-    "updatedAt": "2026-04-07T12:00:00.000Z",
+    "updatedAt": "2026-04-25T00:47:42.506Z",
     "dueDate": "2026-04-09T12:00:00.000Z",
     "assignee": {
       "id": "user-002",
@@ -277,6 +330,18 @@
     ],
     "role": "admin",
     "activityLog": [
+      {
+        "timestamp": "2026-04-25T00:47:42.506Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
+      {
+        "timestamp": "2026-04-25T00:44:50.485Z",
+        "actorName": "AI Assistant",
+        "action": "updated task",
+        "details": "Updated through task mutation flow"
+      },
       {
         "timestamp": "2026-04-05T12:00:00.000Z",
         "actorName": "Jordan Lee",
@@ -716,45 +781,6 @@
         "timestamp": "2026-04-19T12:00:00.000Z",
         "actorName": "System",
         "action": "moved to In Progress",
-        "details": "Workflow automation sync"
-      }
-    ]
-  },
-  {
-    "id": "task-0019",
-    "title": "Sync design tokens with shell preview app",
-    "description": "Sync design tokens with shell preview app with production-grade follow-through for the AI task management submission.",
-    "category": "Design",
-    "status": "Done",
-    "priority": "Medium",
-    "createdAt": "2026-04-17T12:00:00.000Z",
-    "updatedAt": "2026-04-20T12:00:00.000Z",
-    "dueDate": "2026-04-22T12:00:00.000Z",
-    "assignee": {
-      "id": "user-001",
-      "name": "Alex Rivera",
-      "role": "Frontend Lead"
-    },
-    "org": {
-      "id": "org-design",
-      "name": "Acme Design"
-    },
-    "tags": [
-      "design",
-      "done"
-    ],
-    "role": "owner",
-    "activityLog": [
-      {
-        "timestamp": "2026-04-18T12:00:00.000Z",
-        "actorName": "Alex Rivera",
-        "action": "created task",
-        "details": "Initial triage completed"
-      },
-      {
-        "timestamp": "2026-04-20T12:00:00.000Z",
-        "actorName": "System",
-        "action": "moved to Done",
         "details": "Workflow automation sync"
       }
     ]

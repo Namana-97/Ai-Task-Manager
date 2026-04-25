@@ -5,16 +5,19 @@ import {
   HttpException,
   HttpStatus,
   Inject,
+  Optional,
   Post,
   Query,
   Res,
   UseGuards
 } from '@nestjs/common';
 import { RateLimitExceededError } from '@ai-task-manager/ai/guardrails';
+import { RagResponse } from '@ai-task-manager/ai/rag';
 import { CurrentUser, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedUser } from '../common/contracts';
 import { ChatService } from './chat.service';
 import { ChatHistoryService } from '../history/chat-history.service';
+import { QueryRouterService } from './query-router.service';
 
 interface StreamableResponse {
   setHeader(name: string, value: string): void;
@@ -30,7 +33,10 @@ export class ChatController {
     @Inject(ChatService)
     private readonly chatService: ChatService,
     @Inject(ChatHistoryService)
-    private readonly historyService: ChatHistoryService
+    private readonly historyService: ChatHistoryService,
+    @Optional()
+    @Inject(QueryRouterService)
+    private readonly queryRouter?: QueryRouterService
   ) {}
 
   @Post('ask')
@@ -40,7 +46,12 @@ export class ChatController {
     @Res({ passthrough: true }) response: StreamableResponse
   ) {
     try {
-      const result = await this.chatService.ask(body.message, user);
+      const routed = this.queryRouter
+        ? await this.queryRouter.handle(body.message, user.id, user)
+        : null;
+      const result = routed
+        ? await this.saveDirectResponse(body.message, routed, user)
+        : await this.chatService.ask(body.message, user);
 
       if (body.stream) {
         response.setHeader('Content-Type', 'text/event-stream');
@@ -76,6 +87,27 @@ export class ChatController {
     @Query('before') before?: string
   ) {
     return this.historyService.list(user.id, Number(limit ?? 20), before);
+  }
+
+  private async saveDirectResponse(
+    message: string,
+    result: RagResponse,
+    user: AuthenticatedUser
+  ): Promise<RagResponse> {
+    await this.historyService.save({
+      userId: user.id,
+      orgId: user.orgId,
+      role: 'user',
+      content: message
+    });
+    await this.historyService.save({
+      userId: user.id,
+      orgId: user.orgId,
+      role: 'assistant',
+      content: result.answer,
+      sources: result.sources
+    });
+    return result;
   }
 }
 

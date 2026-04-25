@@ -17,6 +17,8 @@ import {
 import { GeminiKeyPool, LlmClient, PromptLoader, RagEngine } from '@ai-task-manager/ai/rag';
 import { ChatController } from './chat/chat.controller';
 import { ChatService } from './chat/chat.service';
+import { QueryRouterService } from './chat/query-router.service';
+import { QuerySessionStore } from './chat/query-session.store';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { DatabaseService } from './database/database.service';
 import { ChatHistoryService } from './history/chat-history.service';
@@ -39,6 +41,8 @@ import { TaskRepositoryStub } from './repository/task-repository.stub';
     CanaryTokenValidator,
     ChatHistoryService,
     ChatService,
+    QueryRouterService,
+    QuerySessionStore,
     DatabaseService,
     EmbeddingClient,
     GeminiKeyPool,

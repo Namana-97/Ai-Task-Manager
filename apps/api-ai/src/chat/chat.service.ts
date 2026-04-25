@@ -5,6 +5,7 @@ import { ChatHistoryService } from '../history/chat-history.service';
 import { AuthenticatedUser, Task } from '../common/contracts';
 import { TaskRepositoryStub } from '../repository/task-repository.stub';
 import { ReportsService } from '../reports/reports.service';
+import { QuerySessionStore } from './query-session.store';
 
 @Injectable()
 export class ChatService {
@@ -16,7 +17,9 @@ export class ChatService {
     @Inject(TaskRepositoryStub)
     private readonly repository: TaskRepositoryStub,
     @Inject(ReportsService)
-    private readonly reportsService: ReportsService
+    private readonly reportsService: ReportsService,
+    @Inject(QuerySessionStore)
+    private readonly sessionStore: QuerySessionStore
   ) {}
 
   async ask(message: string, user: AuthenticatedUser) {
@@ -50,6 +53,7 @@ export class ChatService {
       content: response.answer,
       sources: response.sources
     });
+    await this.captureTaskContext(user.id, response.sources);
 
     return response;
   }
@@ -157,5 +161,27 @@ export class ChatService {
       title: task.title,
       similarity: Math.max(0.72, 0.98 - index * 0.04)
     };
+  }
+
+  private async captureTaskContext(sessionId: string, sources?: SourceReference[]): Promise<void> {
+    const taskIds = Array.from(
+      new Set(
+        (sources ?? [])
+          .map((source) => source.taskId)
+          .filter((taskId): taskId is string => Boolean(taskId))
+      )
+    );
+
+    if (!taskIds.length) {
+      return;
+    }
+
+    const tasks = await this.repository.findByIds(taskIds);
+    if (tasks.length) {
+      const ordered = taskIds
+        .map((taskId) => tasks.find((task) => task.id === taskId))
+        .filter((task): task is Task => Boolean(task));
+      this.sessionStore.setLastTasks(sessionId, ordered);
+    }
   }
 }
